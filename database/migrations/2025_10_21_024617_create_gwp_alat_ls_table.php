@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreatePermitTypesTable extends Migration
+class CreateGwpAlatLsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,10 +13,10 @@ class CreatePermitTypesTable extends Migration
      */
     public function up()
     {
-        Schema::create('permit_types', function (Blueprint $table) {
+        Schema::create('gwp_alat_ls', function (Blueprint $table) {
             $table->id();
-            $table->string('kode');
-            $table->string('nama');
+            $table->string('nama', 100);
+            $table->timestamps();
         });
     }
 
@@ -27,6 +27,6 @@ class CreatePermitTypesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('permit_types');
+        Schema::dropIfExists('gwp_alat_ls');
     }
 }

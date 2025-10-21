@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreatePermitGwpApprovalTable extends Migration
+class CreatePermitGwpCompletionTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,13 +13,13 @@ class CreatePermitGwpApprovalTable extends Migration
      */
     public function up()
     {
-        Schema::create('permit_gwp_approval', function (Blueprint $table) {
+        Schema::create('permit_gwp_completion', function (Blueprint $table) {
             $table->id();
             $table->foreignId('permit_gwp_id')->constrained('permit_gwp')->onDelete('cascade');
-            $table->integer('approver_id');
-            $table->string('role_persetujuan', 50);
-            $table->integer('status_persetujuan')->default(0);
-            $table->dateTime('tgl_persetujuan');
+            $table->integer('completion_id');
+            $table->string('role_completion', 50);
+            $table->integer('status_completion')->default(0);
+            $table->dateTime('tgl_completion');
             $table->text('catatan')->nullable();
             $table->timestamps();
         });
@@ -32,6 +32,6 @@ class CreatePermitGwpApprovalTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('permit_gwp_approval');
+        Schema::dropIfExists('permit_gwp_completion');
     }
 }
