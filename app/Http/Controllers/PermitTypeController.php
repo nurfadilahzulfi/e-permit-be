@@ -2,77 +2,72 @@
 namespace App\Http\Controllers;
 
 use App\Models\PermitType;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PermitTypeController extends Controller
 {
     public function index()
     {
         $data = PermitType::all();
-        return response()->json([
-            'success' => true,
-            'data'    => $data,
-            'message' => $data->isEmpty() ? 'Belum ada data permit type' : 'Data permit type ditemukan',
-        ]);
+        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function show($id)
     {
         $data = PermitType::find($id);
         if (! $data) {
-            return response()->json(['success' => false, 'message' => 'Data tidak ditemukan'], 404);
+            return response()->json(['success' => false, 'message' => 'Data tidak ditemukan.'], 404);
         }
         return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function store(Request $request)
     {
-        $request->validate(['nama' => 'required|string|max:100']);
-
         DB::beginTransaction();
         try {
-            $data = PermitType::create(['nama' => $request->nama]);
+            $validated = $request->validate([
+                'nama'      => 'required|string|max:100|unique:permit_types,nama',
+                'kode'      => 'required|string|max:50|unique:permit_types,kode',
+                'deskripsi' => 'nullable|string',
+            ]);
+
+            $data = PermitType::create($validated);
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Data permit type berhasil disimpan',
-                'data'    => $data,
-            ]);
-        } catch (Exception $e) {
+            return response()->json(['success' => true, 'message' => 'Data berhasil disimpan.', 'data' => $data], 201);
+        } catch (ValidationException $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menyimpan data',
-                'error'   => $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
     public function update(Request $request, $id)
     {
-        $request->validate(['nama' => 'required|string|max:100']);
-
         DB::beginTransaction();
         try {
             $data = PermitType::findOrFail($id);
-            $data->update(['nama' => $request->nama]);
+
+            $validated = $request->validate([
+                'nama'      => 'required|string|max:100|unique:permit_types,nama,' . $id,
+                'kode'      => 'required|string|max:50|unique:permit_types,kode,' . $id,
+                'deskripsi' => 'nullable|string',
+            ]);
+
+            $data->update($validated);
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Data permit type berhasil diperbarui',
-                'data'    => $data,
-            ]);
-        } catch (Exception $e) {
+            return response()->json(['success' => true, 'message' => 'Data berhasil diperbarui.', 'data' => $data]);
+        } catch (ValidationException $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memperbarui data',
-                'error'   => $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -83,18 +78,10 @@ class PermitTypeController extends Controller
             $data = PermitType::findOrFail($id);
             $data->delete();
             DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Data permit type berhasil dihapus',
-            ]);
-        } catch (Exception $e) {
+            return response()->json(['success' => true, 'message' => 'Data berhasil dihapus.']);
+        } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menghapus data',
-                'error'   => $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 }

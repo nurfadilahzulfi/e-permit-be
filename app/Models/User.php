@@ -8,12 +8,27 @@ class User extends Authenticatable
 {
     use Notifiable;
 
+    /**
+     * The attributes that are mass assignable.
+     * Semua kolom NOT NULL dari migration harus dimasukkan di sini.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
-        'name',
+        'nama',
+        'nip',        // Wajib ditambahkan
+        'divisi',     // Wajib ditambahkan
+        'jabatan',    // Wajib ditambahkan
+        'perusahaan', // Wajib ditambahkan
         'email',
         'password',
     ];
 
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
+     */
     protected $hidden = [
         'password',
         'remember_token',

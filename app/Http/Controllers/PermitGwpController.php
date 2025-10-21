@@ -4,30 +4,52 @@ namespace App\Http\Controllers;
 use App\Models\PermitGwp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PermitGwpController extends Controller
 {
     public function index()
     {
-        return response()->json(PermitGwp::with(['pemohon', 'approvals', 'completions'])->get());
+        $data = PermitGwp::with(['approvals', 'completions'])->get();
+        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function show($id)
     {
-        $data = PermitGwp::with(['pemohon', 'approvals', 'completions'])->find($id);
-        return $data ? response()->json($data) : response()->json(['message' => 'Not found'], 404);
+        $data = PermitGwp::with(['approvals', 'completions'])->find($id);
+        if (! $data) {
+            return response()->json(['success' => false, 'message' => 'Permit tidak ditemukan.'], 404);
+        }
+        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function store(Request $request)
     {
         DB::beginTransaction();
         try {
-            $permit = PermitGwp::create($request->all());
+            $validated = $request->validate([
+                'nomor'                => 'required|string|unique:permit_gwp,nomor',
+                'tgl_permohonan'       => 'required|date',
+                'shift_kerja'          => 'required|string|max:20',
+                'lokasi'               => 'required|string|max:255',
+                'deskripsi_pekerjaan'  => 'required|string',
+                'peralatan_pekerjaan'  => 'required|string',
+                'pemohon_id'           => 'required|integer',
+                'pemohon_jenis'        => 'required|in:internal,eksternal',
+                'pemilik_lokasi_jenis' => 'required|integer',
+                'status'               => 'required|integer',
+            ]);
+
+            $permit = PermitGwp::create($validated);
             DB::commit();
-            return response()->json($permit, 201);
-        } catch (\Throwable $e) {
+
+            return response()->json(['success' => true, 'message' => 'Permit berhasil dibuat.', 'data' => $permit], 201);
+        } catch (ValidationException $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -36,12 +58,30 @@ class PermitGwpController extends Controller
         DB::beginTransaction();
         try {
             $permit = PermitGwp::findOrFail($id);
-            $permit->update($request->all());
+
+            $validated = $request->validate([
+                'nomor'                => 'required|string|unique:permit_gwp,nomor,' . $id,
+                'tgl_permohonan'       => 'required|date',
+                'shift_kerja'          => 'required|string|max:20',
+                'lokasi'               => 'required|string|max:255',
+                'deskripsi_pekerjaan'  => 'required|string',
+                'peralatan_pekerjaan'  => 'required|string',
+                'pemohon_id'           => 'required|integer',
+                'pemohon_jenis'        => 'required|in:internal,eksternal',
+                'pemilik_lokasi_jenis' => 'required|integer',
+                'status'               => 'required|integer',
+            ]);
+
+            $permit->update($validated);
             DB::commit();
-            return response()->json($permit);
-        } catch (\Throwable $e) {
+
+            return response()->json(['success' => true, 'message' => 'Permit berhasil diperbarui.', 'data' => $permit]);
+        } catch (ValidationException $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -52,10 +92,10 @@ class PermitGwpController extends Controller
             $permit = PermitGwp::findOrFail($id);
             $permit->delete();
             DB::commit();
-            return response()->json(['message' => 'Permit deleted']);
-        } catch (\Throwable $e) {
+            return response()->json(['success' => true, 'message' => 'Permit berhasil dihapus.']);
+        } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 }
