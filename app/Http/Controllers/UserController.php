@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Hash;
 
 // use Illuminate\Validation\ValidationException; // Tidak perlu di-import, sudah dihandle Laravel
 
-class UsersController extends Controller
+class UserController extends Controller
 {
     public function index()
     {
@@ -35,7 +35,7 @@ class UsersController extends Controller
                 'divisi'     => 'required|string|max:100',
                 'jabatan'    => 'required|string|max:100',
                 'perusahaan' => 'required|string|max:100',
-                'email'      => 'required|email|unique:users,email',
+                'email'      => 'required|email|unique:user,email',
                 'password'   => 'required|min:6',
             ]);
 
@@ -70,7 +70,7 @@ class UsersController extends Controller
                 'perusahaan' => 'required|string|max:100', // Tambah: wajib di-update
 
                 // Pengecualian unik email: Abaikan ID user yang sedang di-update
-                'email'      => 'required|email|unique:users,email,' . $user->id,
+                'email'      => 'required|email|unique:user,email,' . $user->id,
 
                 // Password bersifat opsional (nullable) saat update
                 'password'   => 'nullable|min:6',

@@ -30,7 +30,7 @@ class CreatePermitGwpTable extends Migration
             $table->timestamps();
 
             // Index dan foreign key tambahan
-            $table->foreign('pemohon_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('pemohon_id')->references('id')->on('user')->onDelete('cascade');
         });
     }
 

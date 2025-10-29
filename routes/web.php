@@ -9,7 +9,7 @@ use App\Http\Controllers\PermitGwpApprovalController;
 use App\Http\Controllers\PermitGwpCompletionController;
 use App\Http\Controllers\PermitGwpController;
 use App\Http\Controllers\PermitTypeController;
-use App\Http\Controllers\UsersController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -32,9 +32,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/dashboard', [AuthController::class, 'dashboard'])->middleware('auth')->name('dashboard');
 
 // =======================
-// USERS CRUD
+// USER CRUD
 // =======================
-Route::resource('users', UsersController::class)->middleware('auth');
+Route::resource('user', UserController::class)->middleware('auth');
 
 // =======================
 // PERMIT TYPES CRUD

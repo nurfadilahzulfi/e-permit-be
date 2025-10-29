@@ -10,7 +10,7 @@ use App\Http\Controllers\GwpCekPemohonLsController;
 use App\Http\Controllers\PermitGwpApprovalController;
 use App\Http\Controllers\PermitGwpCompletionController;
 use App\Http\Controllers\PermitTypeController;
-use App\Http\Controllers\UsersController;
+use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -19,12 +19,12 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::prefix('users')->group(function () {
-    Route::get('/', [UsersController::class, 'index']);
-    Route::get('/{id}', [UsersController::class, 'show']);
-    Route::post('/', [UsersController::class, 'store']);
-    Route::put('/{id}', [UsersController::class, 'update']);
-    Route::delete('/{id}', [UsersController::class, 'destroy']);
+Route::prefix('user')->group(function () {
+    Route::get('/', [UserController::class, 'index']);
+    Route::get('/{id}', [UserController::class, 'show']);
+    Route::post('/', [UserController::class, 'store']);
+    Route::put('/{id}', [UserController::class, 'update']);
+    Route::delete('/{id}', [UserController::class, 'destroy']);
 });
 
 Route::prefix('permit-types')->group(function () {

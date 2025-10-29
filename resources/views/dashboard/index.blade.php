@@ -16,7 +16,7 @@
     </nav>
 
     <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <a href="{{ url('users') }}" class="bg-white p-4 rounded shadow hover:shadow-md">Manage Users</a>
+        <a href="{{ url('user') }}" class="bg-white p-4 rounded shadow hover:shadow-md">Manage User</a>
         <a href="{{ url('permit-types') }}" class="bg-white p-4 rounded shadow hover:shadow-md">Permit Types</a>
         <a href="{{ url('permit-gwp') }}" class="bg-white p-4 rounded shadow hover:shadow-md">Permit GWP</a>
         <a href="{{ url('permit-gwp-approval') }}" class="bg-white p-4 rounded shadow hover:shadow-md">GWP Approvals</a>
