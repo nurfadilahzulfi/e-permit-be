@@ -6,12 +6,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-// use Illuminate\Validation\ValidationException; // Tidak perlu di-import, sudah dihandle Laravel
-
 class UserController extends Controller
 {
     public function index()
     {
+        if (! request()->wantsJson()) {
+            $data = User::orderBy('id', 'desc')->get();
+            return view('user.index', compact('data'));
+        }
+
         $data = User::all();
         return response()->json(['success' => true, 'data' => $data]);
     }
@@ -40,14 +43,17 @@ class UserController extends Controller
             ]);
 
             $validated['password'] = Hash::make($validated['password']);
-            $data                  = User::create($validated);
+            $user                  = User::create($validated);
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'User berhasil dibuat.', 'data' => $data], 201);
 
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'User berhasil dibuat.', 'data' => $user], 201);
+            }
+
+            return redirect()->route('user.index')->with('success', 'User berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();
-            // Larvel menangani ValidationException secara otomatis, kita fokus pada Exception umum
             if ($e instanceof \Illuminate\Validation\ValidationException) {
                 return response()->json(['success' => false, 'errors' => $e->errors()], 422);
             }
@@ -61,34 +67,30 @@ class UserController extends Controller
         try {
             $user = User::findOrFail($id);
 
-            // TAMPILKAN SEMUA FIELD WAJIB DALAM VALIDASI UPDATE
             $validated = $request->validate([
                 'nama'       => 'required|string|max:255',
-                'nip'        => 'required|string|max:50',  // Tambah: wajib di-update
-                'divisi'     => 'required|string|max:100', // Tambah: wajib di-update
-                'jabatan'    => 'required|string|max:100', // Tambah: wajib di-update
-                'perusahaan' => 'required|string|max:100', // Tambah: wajib di-update
-
-                // Pengecualian unik email: Abaikan ID user yang sedang di-update
+                'nip'        => 'required|string|max:50',
+                'divisi'     => 'required|string|max:100',
+                'jabatan'    => 'required|string|max:100',
+                'perusahaan' => 'required|string|max:100',
                 'email'      => 'required|email|unique:user,email,' . $user->id,
-
-                // Password bersifat opsional (nullable) saat update
                 'password'   => 'nullable|min:6',
             ]);
 
-            // Pemrosesan Password: hanya hash jika user mengirim password baru
             if (! empty($validated['password'])) {
                 $validated['password'] = Hash::make($validated['password']);
             } else {
-                // Hapus key 'password' dari array $validated agar tidak menimpa password lama
-                // dengan nilai NULL atau string kosong.
                 unset($validated['password']);
             }
 
             $user->update($validated);
             DB::commit();
 
-            return response()->json(['success' => true, 'message' => 'User berhasil diperbarui.', 'data' => $user]);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'User berhasil diperbarui.', 'data' => $user]);
+            }
+
+            return redirect()->route('user.index')->with('success', 'User berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
             if ($e instanceof \Illuminate\Validation\ValidationException) {
@@ -98,14 +100,19 @@ class UserController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         DB::beginTransaction();
         try {
             $user = User::findOrFail($id);
             $user->delete();
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'User berhasil dihapus.']);
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'User berhasil dihapus.']);
+            }
+
+            return redirect()->route('user.index')->with('success', 'User berhasil dihapus.');
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);

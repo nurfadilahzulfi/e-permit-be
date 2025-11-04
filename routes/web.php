@@ -1,5 +1,4 @@
 <?php
-
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GwpAlatLsController;
 use App\Http\Controllers\GwpCekController;
@@ -34,7 +33,10 @@ Route::get('/dashboard', [AuthController::class, 'dashboard'])->middleware('auth
 // =======================
 // USER CRUD
 // =======================
-Route::resource('user', UserController::class)->middleware('auth');
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard/user', [UserController::class, 'view'])->name('dashboard.user');
+    Route::resource('user', UserController::class);
+});
 
 // =======================
 // PERMIT TYPES CRUD
