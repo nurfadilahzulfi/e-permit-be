@@ -15,9 +15,6 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Web Routes - E-Permit
 |--------------------------------------------------------------------------
-|
-| Semua route web untuk project E-Permit, termasuk login/admin/dashboard
-|
 */
 
 // =======================
@@ -27,33 +24,69 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login.form
 Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// Dashboard admin (hanya untuk user login)
-Route::get('/dashboard', [AuthController::class, 'dashboard'])->middleware('auth')->name('dashboard');
-
 // =======================
-// USER CRUD
+// AREA YANG BUTUH LOGIN (DENGAN ROLE)
 // =======================
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard/user', [UserController::class, 'view'])->name('dashboard.user');
-    Route::resource('user', UserController::class);
+
+    // --- DASHBOARD ---
+    Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
+
+    // --- KHUSUS ADMIN ---
+    Route::middleware(['role:admin'])->group(function () {
+        Route::get('/dashboard/user', [UserController::class, 'view'])->name('dashboard.user');
+        Route::resource('user', UserController::class);
+        Route::resource('permit-types', PermitTypeController::class);
+    });
+
+                                                                          // --- KHUSUS APPROVER (Supervisor & HSE) ---
+    Route::middleware(['role:supervisor,hse,admin'])->group(function () { // Admin juga bisa
+        Route::get('/permit-gwp-approval', [PermitGwpApprovalController::class, 'index'])
+            ->name('permit-gwp-approval.index');
+        Route::post('/permit-gwp-approval/approve/{permit_gwp_id}', [PermitGwpApprovalController::class, 'approve'])
+            ->name('permit-gwp-approval.approve');
+        Route::post('/permit-gwp-approval/reject/{permit_gwp_id}', [PermitGwpApprovalController::class, 'reject'])
+            ->name('permit-gwp-approval.reject');
+    });
+
+    // --- AREA PEMOHON (Bisa juga diakses Admin) ---
+    Route::middleware(['role:pemohon,admin'])->group(function () {
+        Route::resource('permit-gwp', PermitGwpController::class);
+    });
+
+    // --- HISTORI (Bisa dilihat semua) ---
+    Route::get('/permit-gwp-approval/history/{permit_gwp_id}', [PermitGwpApprovalController::class, 'show'])
+        ->name('permit-gwp-approval.history');
+    Route::delete('/permit-gwp-approval/{id}', [PermitGwpApprovalController::class, 'destroy'])
+        ->name('permit-gwp-approval.destroy'); // Mungkin ini harus 'admin'
+
+    // =======================
+    // GWP CEK (MASTER DATA PERTANYAAN) - Khusus Admin
+    // =======================
+    Route::middleware(['role:admin'])->group(function () {
+        Route::resource('gwp-cek-pemohon-ls', GwpCekPemohonLsController::class);
+        Route::resource('gwp-cek-hse-ls', GwpCekHseLsController::class);
+        Route::resource('gwp-alat-ls', GwpAlatLsController::class);
+    });
+
+    // =======================
+    // GWP CEK (LEMBAR JAWABAN) - Semua Role
+    // =======================
+    // Kita hapus Route::resource('gwp-cek', ...) dan ganti dengan ini:
+
+    // Rute untuk MENAMPILKAN checklist (lembar jawaban) untuk satu izin
+    Route::get('/gwp-cek/{permit_gwp_id}', [GwpCekController::class, 'index'])
+        ->name('gwp-cek.index');
+
+    // Rute untuk UPDATE (mencentang) satu item di checklist
+    Route::put('/gwp-cek/{id}', [GwpCekController::class, 'update'])
+        ->name('gwp-cek.update');
+
+    // Kita tidak perlu store/destroy di sini, karena dibuat otomatis
+    // oleh PermitGwpController dan dihapus via 'onDelete('cascade')'.
+
+    // =======================
+    // PERMIT GWP COMPLETION
+    // =======================
+    Route::resource('permit-gwp-completion', PermitGwpCompletionController::class)->middleware('auth');
 });
-
-// =======================
-// PERMIT TYPES CRUD
-// =======================
-Route::resource('permit-types', PermitTypeController::class)->middleware('auth');
-
-// =======================
-// PERMIT GWP CRUD
-// =======================
-Route::resource('permit-gwp', PermitGwpController::class)->middleware('auth');
-Route::resource('permit-gwp-approval', PermitGwpApprovalController::class)->middleware('auth');
-Route::resource('permit-gwp-completion', PermitGwpCompletionController::class)->middleware('auth');
-
-// =======================
-// GWP CEK
-// =======================
-Route::resource('gwp-cek', GwpCekController::class)->middleware('auth');
-Route::resource('gwp-cek-pemohon-ls', GwpCekPemohonLsController::class)->middleware('auth');
-Route::resource('gwp-cek-hse-ls', GwpCekHseLsController::class)->middleware('auth');
-Route::resource('gwp-alat-ls', GwpAlatLsController::class)->middleware('auth');

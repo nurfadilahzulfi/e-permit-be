@@ -45,40 +45,72 @@
         <nav class="p-4 space-y-2 flex-1 overflow-y-auto">
             <a href="{{ url('/dashboard') }}" 
                class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
-                      {{ Request::is('dashboard*') ? $activeClass : $inactiveClass }}">
+                      {{ Request::is('dashboard') ? $activeClass : $inactiveClass }}"> <!-- Hapus * -->
                 <!-- Ikon Dashboard (SVG Inline) -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
                     <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
                 </svg>
                 <span class="font-medium">Dashboard</span>
             </a>
-            <a href="{{ url('/user') }}" 
-               class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
-                      {{ Request::is('user*') ? $activeClass : $inactiveClass }}">
-                <!-- Ikon User (SVG Inline) -->
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-                <span class="font-medium">Manage User</span>
-            </a>
-            <a href="{{ url('/permit-types') }}" 
-               class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
-                      {{ Request::is('permit-types*') ? $activeClass : $inactiveClass }}">
-                <!-- Ikon Permit Types (SVG Inline) -->
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>
-                </svg>
-                <span class="font-medium">Permit Types</span>
-            </a>
-            <a href="{{ url('/permit-gwp') }}" 
-               class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
-                      {{ Request::is('permit-gwp*') ? $activeClass : $inactiveClass }}">
-                <!-- Ikon Permit GWP (SVG Inline) -->
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                    <path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2Z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/>
-                </svg>
-                <span class="font-medium">Permit GWP</span>
-            </a>
+            
+            {{-- HANYA ADMIN YANG BISA LIHAT MANAGE USER --}}
+            @if(Auth::user()->role == 'admin')
+                {{-- 
+                   DIUBAH: Link menunjuk ke 'dashboard.user' (GET /dashboard/user) 
+                   yang mengembalikan view HTML, BUKAN 'user.index' (GET /user) 
+                   yang mengembalikan JSON.
+                --}}
+                <a href="{{ route('dashboard.user') }}" 
+                   class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
+                          {{ Request::is('dashboard/user*') || Request::is('user/*') ? $activeClass : $inactiveClass }}">
+                    <!-- Ikon User (SVG Inline) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span class="font-medium">Manage User</span>
+                </a>
+                <a href="{{ url('/permit-types') }}" 
+                   class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
+                          {{ Request::is('permit-types*') ? $activeClass : $inactiveClass }}">
+                    <!-- Ikon Permit Types (SVG Inline) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>
+                    </svg>
+                    <span class="font-medium">Permit Types</span>
+                </a>
+            @endif
+
+            {{-- PEMOHON & ADMIN BISA LIHAT PERMIT GWP --}}
+            @if(in_array(Auth::user()->role, ['pemohon', 'admin']))
+                <a href="{{ url('/permit-gwp') }}" 
+                   class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
+                          {{ Request::is('permit-gwp') ? $activeClass : $inactiveClass }}"> {{-- Hapus * agar approval tidak ikut aktif --}}
+                    <!-- Ikon Permit GWP (SVG Inline) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2Z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/>
+                    </svg>
+                    <span class="font-medium">Permit GWP</span>
+                </a>
+            @endif
+            
+            {{-- SUPERVISOR & HSE & ADMIN BISA LIHAT PERSETUJUAN --}}
+            @if(in_array(Auth::user()->role, ['supervisor', 'hse', 'admin']))
+                <a href="{{ route('permit-gwp-approval.index') }}" 
+                   class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
+                          {{ Request::is('permit-gwp-approval*') ? $activeClass : $inactiveClass }}">
+                    
+                    <!-- Ikon Approval (SVG Inline) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                        <path d="m9 12 2 2 4-4"/>
+                    </svg>
+                    
+                    <span class="font-medium">Persetujuan Izin</span>
+                </a>
+            @endif
+            
+            {{-- Tambahkan @if untuk menu GWP Completion, GWP Cek, dll. --}}
+            
         </nav>
 
         <!-- Bagian Bawah Sidebar (Logout) -->
@@ -213,4 +245,3 @@
     @stack('scripts')
 </body>
 </html>
-

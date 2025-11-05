@@ -9,9 +9,7 @@
 <div id="toast-container" class="fixed top-6 right-6 z-[9999] space-y-3 w-full max-w-sm">
     </div>
 
-{{-- DIHAPUS: Wrapper <div class="p-4 sm:p-6 lg:p-8"> dihapus karena sudah ada di layout utama --}}
-
-{{-- DIUBAH: gray -> slate --}}
+{{-- HEADER HALAMAN --}}
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 dark:border-slate-700">
     <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mb-3 sm:mb-0">Manajemen User</h2>
     <button id="addUserBtn"
@@ -20,12 +18,12 @@
     </button>
 </div>
 
-{{-- DIUBAH: gray -> slate --}}
+{{-- Petunjuk Scroll Mobile --}}
 <div class="sm:hidden text-sm text-slate-500 dark:text-slate-400 mb-2">
     <span class="font-bold">→</span> Geser tabel ke samping untuk melihat semua kolom.
 </div>
 
-{{-- DIUBAH: gray -> slate --}}
+{{-- TABEL USER --}}
 <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700">
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -37,17 +35,20 @@
                     <th class="py-3 px-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Email</th>
                     <th class="py-3 px-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Jabatan</th>
                     <th class="py-3 px-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Perusahaan</th>
+                    {{-- DIUBAH: Menambahkan kolom Role --}}
+                    <th class="py-3 px-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Role</th>
                     <th class="py-3 px-4 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-20">Aksi</th>
                 </tr>
             </thead>
             <tbody id="userTable" class="text-slate-800 dark:text-slate-200 divide-y divide-slate-200 dark:divide-slate-700">
-                </tbody>
+                {{-- Data dimuat oleh JS --}}
+            </tbody>
         </table>
     </div>
 </div>
-{{-- DIHAPUS: Penutup </div> dari wrapper padding --}}
 
 
+{{-- MODAL TAMBAH/EDIT USER --}}
 <div id="userModal"
      class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 transition-opacity duration-300 ease-out opacity-0
             px-4 py-6">
@@ -56,30 +57,21 @@
          class="bg-white dark:bg-slate-900 rounded-2xl w-full sm:w-2/3 md:w-2/3 lg:w-1/2 shadow-2xl transform scale-95 transition-all duration-300 max-h-[90vh]
                 h-auto flex flex-col border border-slate-200 dark:border-slate-700">
         
+        <!-- HEADER MODAL -->
         <div class="flex-shrink-0 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-900 z-10 rounded-t-2xl">
             <h3 id="modalTitle" class="text-xl font-bold text-slate-800 dark:text-slate-100">Tambah User</h3>
             <button onclick="closeModal()" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-2xl transition">&times;</button>
         </div>
 
-        {{-- 
-          DIUBAH: 
-          1. Parent div dikembalikan ke overflow-y-auto (hanya scroll vertikal).
-          2. Kita tambahkan div wrapper BARU di DALAM form dengan 'overflow-x-auto'.
-             Ini akan mengisolasi scrollbar horizontal HANYA ke area input.
-        --}}
+        <!-- BODY MODAL -->
         <div class="px-6 py-4 overflow-y-auto flex-1">
             <form id="userForm">
                 @csrf
                 <input type="hidden" id="userId">
                 
-                {{-- 👇 WRAPPER BARU DITAMBAHKAN DI SINI --}}
                 <div class="overflow-x-auto">
-                    {{-- 
-                      Div ini menjamin lebar minimum form, 
-                      sehingga di layar sempit pun tidak hancur dan bisa di-scroll.
-                    --}}
                     <div style="min-width: 320px;"> 
-                
+                    
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">Nama</label>
@@ -118,6 +110,20 @@
                                        class="w-full mt-1 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
                             </div>
                         </div>
+
+                        {{-- 👇👇 TAMBAHAN DROPDOWN ROLE 👇👇 --}}
+                        <div class="mt-4">
+                            <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">Role</label>
+                            <select id="role" name="role" required
+                                    class="w-full mt-1 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
+                                <option value="">Pilih Role...</option>
+                                <option value="pemohon">Pemohon</option>
+                                <option value="supervisor">Supervisor</option>
+                                <option value="hse">HSE</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        {{-- 👆👆 BATAS TAMBAHAN 👆👆 --}}
         
                         <div class="mt-4">
                             <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">Password</label>
@@ -132,6 +138,7 @@
             </form>
         </div>
 
+        <!-- FOOTER MODAL -->
         <div class="flex-shrink-0 px-6 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 bg-white dark:bg-slate-900 z-10 rounded-b-2xl">
             <button onclick="closeModal()" 
                     class="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-slate-700 
@@ -146,6 +153,7 @@
         </div>
     </div>
 </div>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // --- Referensi Elemen ---
@@ -191,8 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- CRUD ---
     async function loadUsers() {
         const tbody = document.getElementById('userTable');
-        {{-- DIUBAH: gray -> slate --}}
-        tbody.innerHTML = `<tr><td colspan="7" class="py-4 px-4 text-center text-slate-400">Memuat data...</td></tr>`;
+        {{-- DIUBAH: Colspan jadi 8 --}}
+        tbody.innerHTML = `<tr><td colspan="8" class="py-4 px-4 text-center text-slate-400">Memuat data...</td></tr>`;
         try {
             const res = await fetch('{{ route("user.index") }}', { headers: { 'Accept': 'application/json' } });
             const json = await res.json();
@@ -202,18 +210,27 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = ''; // Bersihkan loading
             
             if (json.data.length === 0) {
-                 {{-- DIUBAH: gray -> slate --}}
-                tbody.innerHTML = `<tr><td colspan="7" class="py-4 px-4 text-center text-slate-400">Belum ada data user.</td></tr>`;
+                 {{-- DIUBAH: Colspan jadi 8 --}}
+                tbody.innerHTML = `<tr><td colspan="8" class="py-4 px-4 text-center text-slate-400">Belum ada data user.</td></tr>`;
                 return;
             }
 
             json.data.forEach(u => {
-                {{-- 
-                  DIUBAH: 
-                  1. hover:bg-gray-50 -> hover:bg-slate-50
-                  2. dark:hover:bg-gray-800 -> dark:hover:bg-slate-700 (Memperbaiki bug hover)
-                  3. Warna tombol Edit/Hapus disesuaikan untuk dark mode
-                --}}
+                
+                {{-- DIUBAH: Style untuk badge Role --}}
+                let roleClass = '';
+                switch(u.role) {
+                    case 'admin':
+                        roleClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+                        break;
+                    case 'supervisor':
+                    case 'hse':
+                        roleClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+                        break;
+                    default:
+                        roleClass = 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200';
+                }
+
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700 transition">
                         <td class="py-3 px-4 text-sm whitespace-nowrap">${u.nama}</td>
@@ -222,6 +239,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="py-3 px-4 text-sm whitespace-nowrap">${u.email}</td>
                         <td class="py-3 px-4 text-sm whitespace-nowrap">${u.jabatan}</td>
                         <td class="py-3 px-4 text-sm whitespace-nowrap">${u.perusahaan}</td>
+                        
+                        {{-- DIUBAH: Menampilkan kolom Role --}}
+                        <td class="py-3 px-4 text-sm whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full capitalize ${roleClass}">
+                                ${u.role}
+                            </span>
+                        </td>
+
                         <td class="py-3 px-4 text-center text-sm whitespace-nowrap">
                             <button onclick="editUser(${u.id})" 
                                     class="text-yellow-600 dark:text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400 font-semibold mr-3 transition">
@@ -235,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </tr>`;
             });
         } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="7" class="py-4 px-4 text-center text-red-500">Gagal memuat data: ${e.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="py-4 px-4 text-center text-red-500">Gagal memuat data: ${e.message}</td></tr>`;
             showToast('Gagal memuat data!', 'error');
         }
     }
@@ -247,7 +272,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error(json.message || 'Gagal mengambil data user.');
 
             const u = json.data;
-            ['nama','nip','divisi','jabatan','perusahaan','email'].forEach(k => document.getElementById(k).value = u[k]);
+            
+            {{-- DIUBAH: Menambahkan 'role' ke auto-fill --}}
+            ['nama','nip','divisi','jabatan','perusahaan','email', 'role'].forEach(k => {
+                if(document.getElementById(k)) { // Cek jika elemen ada
+                    document.getElementById(k).value = u[k];
+                }
+            });
+            
             document.getElementById('userId').value = u.id;
             document.getElementById('modalTitle').innerText = 'Edit User: ' + u.nama;
             passwordInput.required = false;
@@ -327,8 +359,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * FUNGSI NOTIFIKASI MODERN (Bisa Menumpuk)
-     * @param {string} message - Pesan yang ingin ditampilkan.
-     * @param {string} type - 'success' (hijau) atau 'error' (merah).
      */
     window.showToast = (message, type = 'success') => {
         const toast = document.createElement('div');
@@ -363,3 +393,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endsection
+

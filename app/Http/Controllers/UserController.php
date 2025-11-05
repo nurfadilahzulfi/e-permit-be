@@ -4,21 +4,24 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules; // <-- Pastikan ini ada
+use Illuminate\Validation\ValidationException;
+// <-- Pastikan ini ada
 
 class UserController extends Controller
 {
+    /**
+     * Menampilkan semua user (hanya untuk Admin)
+     */
     public function index()
     {
-        if (! request()->wantsJson()) {
-            $data = User::orderBy('id', 'desc')->get();
-            return view('user.index', compact('data'));
-        }
-
         $data = User::all();
         return response()->json(['success' => true, 'data' => $data]);
     }
 
+    /**
+     * Menampilkan detail satu user (hanya untuk Admin)
+     */
     public function show($id)
     {
         $data = User::find($id);
@@ -28,91 +31,107 @@ class UserController extends Controller
         return response()->json(['success' => true, 'data' => $data]);
     }
 
+    /**
+     * [BARU] Halaman view (jika kamu membutuhkannya)
+     */
+    public function view()
+    {
+        // Ini adalah fungsi yang kamu panggil di routes/web.php
+        // Pastikan file view-nya ada
+        return view('user.index');
+    }
+
+    /**
+     * [DIPERBAIKI] Menyimpan user baru (dari langkah sebelumnya)
+     */
     public function store(Request $request)
     {
         DB::beginTransaction();
         try {
             $validated = $request->validate([
                 'nama'       => 'required|string|max:255',
-                'nip'        => 'required|string|max:50',
+                'email'      => 'required|string|email|max:255|unique:user', // 'unique:user'
+                'password'   => ['required', Rules\Password::min(8)],
+                'nip'        => 'required|string|max:100',
                 'divisi'     => 'required|string|max:100',
                 'jabatan'    => 'required|string|max:100',
                 'perusahaan' => 'required|string|max:100',
-                'email'      => 'required|email|unique:user,email',
-                'password'   => 'required|min:6',
+                'role'       => 'required|string|in:admin,supervisor,hse,pemohon',
             ]);
 
-            $validated['password'] = Hash::make($validated['password']);
-            $user                  = User::create($validated);
-
+            // Model User.php kamu (dengan setPasswordAttribute) akan
+            // otomatis hash password ini.
+            $data = User::create($validated);
             DB::commit();
 
-            if ($request->wantsJson()) {
-                return response()->json(['success' => true, 'message' => 'User berhasil dibuat.', 'data' => $user], 201);
-            }
+            return response()->json(['success' => true, 'message' => 'User berhasil dibuat.', 'data' => $data], 201);
 
-            return redirect()->route('user.index')->with('success', 'User berhasil dibuat.');
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
-            if ($e instanceof \Illuminate\Validation\ValidationException) {
-                return response()->json(['success' => false, 'errors' => $e->errors()], 422);
-            }
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
+    /**
+     * [BARU & PENTING] Update data user
+     */
     public function update(Request $request, $id)
     {
+        $user = User::findOrFail($id); // 1. Cari user-nya dulu
+
         DB::beginTransaction();
         try {
-            $user = User::findOrFail($id);
-
             $validated = $request->validate([
                 'nama'       => 'required|string|max:255',
-                'nip'        => 'required|string|max:50',
+                // 2. Validasi email: unik, TAPI abaikan ID user ini sendiri
+                'email'      => 'required|string|email|max:255|unique:user,email,' . $id,
+                // 3. Password sekarang 'nullable' (opsional)
+                'password'   => ['nullable', 'string', Rules\Password::min(8)],
+                'nip'        => 'required|string|max:100',
                 'divisi'     => 'required|string|max:100',
                 'jabatan'    => 'required|string|max:100',
                 'perusahaan' => 'required|string|max:100',
-                'email'      => 'required|email|unique:user,email,' . $user->id,
-                'password'   => 'nullable|min:6',
+                'role'       => 'required|string|in:admin,supervisor,hse,pemohon',
             ]);
 
-            if (! empty($validated['password'])) {
-                $validated['password'] = Hash::make($validated['password']);
-            } else {
+            // 4. Logic Password Opsional
+            if (empty($validated['password'])) {
+                // Jika password di JSON kosong ("") atau null,
+                // hapus dari array agar tidak meng-update password
                 unset($validated['password']);
             }
 
+            // 5. Update data
+            // Model User.php kamu akan otomatis hash password JIKA ada
             $user->update($validated);
+
             DB::commit();
 
-            if ($request->wantsJson()) {
-                return response()->json(['success' => true, 'message' => 'User berhasil diperbarui.', 'data' => $user]);
-            }
+            return response()->json(['success' => true, 'message' => 'User berhasil diperbarui.', 'data' => $user]);
 
-            return redirect()->route('user.index')->with('success', 'User berhasil diperbarui.');
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
-            if ($e instanceof \Illuminate\Validation\ValidationException) {
-                return response()->json(['success' => false, 'errors' => $e->errors()], 422);
-            }
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
-    public function destroy(Request $request, $id)
+    /**
+     * Hapus user
+     */
+    public function destroy($id)
     {
         DB::beginTransaction();
         try {
-            $user = User::findOrFail($id);
-            $user->delete();
+            $data = User::findOrFail($id);
+            $data->delete();
             DB::commit();
-
-            if ($request->wantsJson()) {
-                return response()->json(['success' => true, 'message' => 'User berhasil dihapus.']);
-            }
-
-            return redirect()->route('user.index')->with('success', 'User berhasil dihapus.');
+            return response()->json(['success' => true, 'message' => 'User berhasil dihapus.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);

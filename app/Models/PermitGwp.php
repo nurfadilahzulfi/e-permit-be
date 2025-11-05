@@ -7,6 +7,12 @@ class PermitGwp extends Model
 {
     protected $table = 'permit_gwp';
 
+    /**
+     * DIUBAH: $fillable disesuaikan dengan migrasi baru kita.
+     * - 'pemilik_lokasi_jenis' DIHAPUS
+     * - 'supervisor_id' DITAMBAHKAN
+     * - 'valid_until' DITAMBAHKAN
+     */
     protected $fillable = [
         'permit_type_id',
         'nomor',
@@ -17,8 +23,9 @@ class PermitGwp extends Model
         'peralatan_pekerjaan',
         'pemohon_id',
         'pemohon_jenis',
-        'pemilik_lokasi_jenis',
+        'supervisor_id', // <-- BARU
         'status',
+        'valid_until', // <-- BARU
     ];
 
     // Sembunyikan permit_type_id dari hasil serialisasi JSON
@@ -36,6 +43,14 @@ class PermitGwp extends Model
         return $this->belongsTo(User::class, 'pemohon_id');
     }
 
+    /**
+     * RELASI BARU: Mendapatkan data Supervisor (User) yang ditugaskan.
+     */
+    public function supervisor()
+    {
+        return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
     // Relasi ke approval
     public function approvals()
     {
@@ -46,11 +61,5 @@ class PermitGwp extends Model
     public function completions()
     {
         return $this->hasMany(PermitGwpCompletion::class, 'permit_gwp_id');
-    }
-
-    // Relasi ke checklist (morphMany)
-    public function gwpCek()
-    {
-        return $this->hasMany(GwpCek::class, 'permit_gwp_id');
     }
 }

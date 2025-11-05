@@ -22,6 +22,7 @@ class CreateUserTable extends Migration
             $table->string('perusahaan');
             $table->string('email')->unique();
             $table->string('password');
+            $table->string('role', 50)->default('pemohon');
             $table->timestamps();
         });
     }

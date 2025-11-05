@@ -16,10 +16,18 @@ class CreatePermitGwpApprovalTable extends Migration
         Schema::create('permit_gwp_approval', function (Blueprint $table) {
             $table->id();
             $table->foreignId('permit_gwp_id')->constrained('permit_gwp')->onDelete('cascade');
-            $table->integer('approver_id');
+
+            // --- INI PERUBAHANNYA ---
+
+            // 1. Mengubah 'approver_id' menjadi foreign key ke tabel 'user'
+            $table->foreignId('approver_id')->constrained('user');
+
+            // 2. Mengubah 'tgl_persetujuan' agar bisa NULL
+            $table->dateTime('tgl_persetujuan')->nullable();
+
+            // --- INI SUDAH BENAR ---
             $table->string('role_persetujuan', 50);
             $table->integer('status_persetujuan')->default(0);
-            $table->dateTime('tgl_persetujuan');
             $table->text('catatan')->nullable();
             $table->timestamps();
         });
