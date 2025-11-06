@@ -13,6 +13,9 @@
     <!-- Memuat CSS (Pastikan path ini benar) -->
     <link href="{{ mix('css/app.css') }}" rel="stylesheet">
     
+    <!-- 1. TAMBAHKAN ALPINE.JS UNTUK INTERAKTIVITAS -->
+    <script src="//unpkg.com/alpinejs" defer></script>
+    
     @stack('styles')
 </head>
 <body class="font-inter antialiased bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300">
@@ -41,75 +44,113 @@
             <button id="closeSidebar" class="md:hidden text-2xl text-slate-600 dark:text-slate-300">&times;</button>
         </div>
 
-        <!-- Navigasi Utama -->
+        <!-- 2. NAVIGASI UTAMA (DIGANTI TOTAL DENGAN DROPDOWN) -->
         <nav class="p-4 space-y-2 flex-1 overflow-y-auto">
+            
+            <!-- Link Dashboard Utama -->
             <a href="{{ url('/dashboard') }}" 
                class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
-                      {{ Request::is('dashboard') ? $activeClass : $inactiveClass }}"> <!-- Hapus * -->
-                <!-- Ikon Dashboard (SVG Inline) -->
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                    <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
-                </svg>
+                      {{ Request::is('dashboard') ? $activeClass : $inactiveClass }}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
                 <span class="font-medium">Dashboard</span>
             </a>
-            
-            {{-- HANYA ADMIN YANG BISA LIHAT MANAGE USER --}}
-            @if(Auth::user()->role == 'admin')
-                {{-- 
-                   DIUBAH: Link menunjuk ke 'dashboard.user' (GET /dashboard/user) 
-                   yang mengembalikan view HTML, BUKAN 'user.index' (GET /user) 
-                   yang mengembalikan JSON.
-                --}}
-                <a href="{{ route('dashboard.user') }}" 
-                   class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
-                          {{ Request::is('dashboard/user*') || Request::is('user/*') ? $activeClass : $inactiveClass }}">
-                    <!-- Ikon User (SVG Inline) -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                    <span class="font-medium">Manage User</span>
-                </a>
-                <a href="{{ url('/permit-types') }}" 
-                   class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
-                          {{ Request::is('permit-types*') ? $activeClass : $inactiveClass }}">
-                    <!-- Ikon Permit Types (SVG Inline) -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>
-                    </svg>
-                    <span class="font-medium">Permit Types</span>
-                </a>
-            @endif
 
-            {{-- PEMOHON & ADMIN BISA LIHAT PERMIT GWP --}}
-            @if(in_array(Auth::user()->role, ['pemohon', 'admin']))
-                <a href="{{ url('/permit-gwp') }}" 
-                   class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
-                          {{ Request::is('permit-gwp') ? $activeClass : $inactiveClass }}"> {{-- Hapus * agar approval tidak ikut aktif --}}
-                    <!-- Ikon Permit GWP (SVG Inline) -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                        <path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2Z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/>
-                    </svg>
-                    <span class="font-medium">Permit GWP</span>
-                </a>
-            @endif
-            
-            {{-- SUPERVISOR & HSE & ADMIN BISA LIHAT PERSETUJUAN --}}
-            @if(in_array(Auth::user()->role, ['supervisor', 'hse', 'admin']))
-                <a href="{{ route('permit-gwp-approval.index') }}" 
-                   class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
-                          {{ Request::is('permit-gwp-approval*') ? $activeClass : $inactiveClass }}">
+            {{-- =================================== --}}
+            {{-- GRUP MENU: PROSES IZIN --}}
+            {{-- =================================== --}}
+            {{-- Logika: Buka dropdown jika rute saat ini cocok --}}
+            <div x-data="{ open: {{ Request::is('permit-gwp*') || Request::is('gwp-cek/view*') ? 'true' : 'false' }} }">
+                
+                {{-- Tombol Dropdown Utama --}}
+                <button @click="open = !open" 
+                        class="w-full flex items-center justify-between gap-3 py-2.5 px-4 rounded-lg transition-all duration-200 {{ $inactiveClass }}">
+                    <div class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2Z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg>
+                        <span class="font-medium">Proses Izin</span>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 transition-transform" :class="{'rotate-90': open}"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+                
+                {{-- Konten Dropdown (Sub-menu) --}}
+                <div x-show="open" x-transition class="pl-5 space-y-1 mt-1">
                     
-                    <!-- Ikon Approval (SVG Inline) -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-                        <path d="m9 12 2 2 4-4"/>
-                    </svg>
+                    {{-- Hanya Pemohon & Admin --}}
+                    @if(in_array(Auth::user()->role, ['pemohon', 'admin']))
+                    <a href="{{ url('/permit-gwp') }}"
+                       class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
+                              {{ Request::is('permit-gwp') ? $activeClass : $inactiveClass }}">
+                        Ajukan Izin GWP
+                    </a>
+                    @endif
                     
-                    <span class="font-medium">Persetujuan Izin</span>
-                </a>
+                    {{-- Hanya Supervisor, HSE, & Admin --}}
+                    @if(in_array(Auth::user()->role, ['supervisor', 'hse', 'admin']))
+                    <a href="{{ route('permit-gwp-approval.index') }}"
+                       class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
+                              {{ Request::is('permit-gwp-approval*') ? $activeClass : $inactiveClass }}">
+                        Persetujuan Izin
+                    </a>
+                    @endif
+                    
+                    {{-- Nanti untuk Fitur 2 (Completion) --}}
+                    {{-- 
+                    <a href="{{ url('/permit-gwp-completion') }}"
+                       class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
+                              {{ Request::is('permit-gwp-completion*') ? $activeClass : $inactiveClass }}">
+                        Penutupan Izin
+                    </a>
+                    --}}
+                </div>
+            </div>
+
+            {{-- =================================== --}}
+            {{-- GRUP MENU: ADMIN / MASTER DATA --}}
+            {{-- =================================== --}}
+            @if(Auth::user()->role == 'admin')
+            {{-- Logika: Buka dropdown jika rute saat ini cocok --}}
+            <div x-data="{ open: {{ Request::is('dashboard/user*') || Request::is('user*') || Request::is('permit-types*') || Request::is('gwp-cek-pemohon-ls*') || Request::is('gwp-cek-hse-ls*') || Request::is('gwp-alat-ls*') ? 'true' : 'false' }} }">
+                {{-- Tombol Dropdown Utama --}}
+                <button @click="open = !open" 
+                        class="w-full flex items-center justify-between gap-3 py-2.5 px-4 rounded-lg transition-all duration-200 {{ $inactiveClass }}">
+                    <div class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0-2l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <span class="font-medium">Master Data</span>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 transition-transform" :class="{'rotate-90': open}"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+                
+                {{-- Konten Dropdown (Sub-menu) --}}
+                <div x-show="open" x-transition class="pl-5 space-y-1 mt-1">
+                    
+                    <a href="{{ route('dashboard.user') }}"
+                       class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
+                              {{ Request::is('dashboard/user*') || Request::is('user*') ? $activeClass : $inactiveClass }}">
+                        Manage User
+                    </a>
+                    <a href="{{ url('/permit-types') }}"
+                       class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
+                              {{ Request::is('permit-types*') ? $activeClass : $inactiveClass }}">
+                        Jenis Izin
+                    </a>
+                    <a href="{{ url('/gwp-cek-pemohon-ls') }}"
+                       class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
+                              {{ Request::is('gwp-cek-pemohon-ls*') ? $activeClass : $inactiveClass }}">
+                        Checklist Pemohon
+                    </a>
+                    <a href="{{ url('/gwp-cek-hse-ls') }}"
+                       class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
+                              {{ Request::is('gwp-cek-hse-ls*') ? $activeClass : $inactiveClass }}">
+                        Checklist HSE
+                    </a>
+                    <a href="{{ url('/gwp-alat-ls') }}"
+                       class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
+                              {{ Request::is('gwp-alat-ls*') ? $activeClass : $inactiveClass }}">
+                        Checklist Alat
+                    </a>
+
+                </div>
+            </div>
             @endif
-            
-            {{-- Tambahkan @if untuk menu GWP Completion, GWP Cek, dll. --}}
             
         </nav>
 
@@ -118,10 +159,7 @@
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
                 <button class="w-full flex items-center gap-3 py-2.5 px-4 rounded-lg font-medium text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-all duration-200">
-                    <!-- Ikon Logout (SVG Inline) -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                     <span>Logout</span>
                 </button>
             </form>
@@ -138,10 +176,7 @@
         <header class="flex items-center justify-between bg-white dark:bg-slate-900 shadow-sm px-4 sm:px-6 py-3 sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800">
             <div class="flex items-center gap-3">
                 <button id="menuButton" class="md:hidden text-2xl text-slate-500 dark:text-slate-300">
-                    <!-- Ikon Menu (SVG Inline) -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-                        <line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/>
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
                 </button>
                 <h1 class="text-lg font-semibold text-slate-700 dark:text-slate-200">@yield('page-title', 'Dashboard')</h1>
             </div>
@@ -156,14 +191,8 @@
                         class="w-10 h-10 rounded-full flex items-center justify-center 
                                bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 
                                text-slate-600 dark:text-slate-300 transition-all">
-                    <!-- Ikon Moon (SVG Inline) -->
-                    <svg id="themeIconMoon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-                    </svg>
-                    <!-- Ikon Sun (SVG Inline) -->
-                    <svg id="themeIconSun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 hidden">
-                        <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
-                    </svg>
+                    <svg id="themeIconMoon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                    <svg id="themeIconSun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 hidden"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                 </button>
 
                 <!-- Avatar User -->

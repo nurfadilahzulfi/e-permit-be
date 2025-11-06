@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\GwpCek;
+use App\Models\PermitGwp; // <-- 1. TAMBAHKAN INI
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -9,19 +10,34 @@ use Illuminate\Validation\ValidationException;
 class GwpCekController extends Controller
 {
     /**
-     * [LOGIC BARU] Menampilkan semua item checklist (lembar jawaban)
-     * untuk satu Permit GWP tertentu.
+     * [FUNGSI BARU] Menampilkan halaman HTML (Blade) untuk Checklist.
+     * Ini adalah halaman yang dilihat user di browser.
+     */
+    public function viewChecklistPage($permit_gwp_id)
+    {
+        // Ambil data izin utamanya untuk ditampilkan (misal: judul halaman)
+        $permit = PermitGwp::findOrFail($permit_gwp_id);
+
+        // Kirim data permit (termasuk ID-nya) ke view
+        // Pastikan file view 'gwp-cek.index' ada
+        return view('gwp-cek.index', [
+            'permit' => $permit,
+        ]);
+    }
+
+    /**
+     * [LOGIC DIPERBAIKI] Mengambil DATA (JSON) semua item checklist
+     * untuk satu Permit GWP tertentu. (Dipanggil oleh JavaScript)
      */
     public function index($permit_gwp_id) // Parameter dari route
     {
-        // Ambil semua 'jawaban' untuk permit ini
         // 'ls' adalah relasi MorphTo yang kita definisikan di Model GwpCek
-        // Ini akan otomatis mengambil "pertanyaan" dari tabel master yang benar
         $data = GwpCek::where('permit_gwp_id', $permit_gwp_id)
-            ->with('ls')
+            ->with('ls') // 'ls' adalah nama fungsi relasi di Model GwpCek
             ->get();
 
         if ($data->isEmpty()) {
+            // Ini akan terjadi jika PermitGwpController@store belum membuat checklist
             return response()->json(['success' => false, 'message' => 'Checklist tidak ditemukan atau belum dibuat untuk permit ini.'], 404);
         }
 
@@ -32,7 +48,7 @@ class GwpCekController extends Controller
     }
 
     /**
-     * [LOGIC BARU] Update satu item checklist (mencentang kotak).
+     * [LOGIC DIPERBAIKI] Update satu item checklist (mencentang kotak).
      * $id di sini adalah ID dari tabel 'gwp_cek' (lembar jawaban).
      */
     public function update(Request $request, $id)
@@ -60,8 +76,7 @@ class GwpCekController extends Controller
         }
     }
 
-    // --- FUNGSI LAMA TIDAK DIPERLUKAN LAGI ---
-
+    // --- FUNGSI LAMA (STORE/DESTROY/SHOW) TIDAK DIPERLUKAN LAGI ---
     public function show($id)
     {
         return response()->json(['success' => false, 'error' => 'Metode tidak diizinkan.'], 405);

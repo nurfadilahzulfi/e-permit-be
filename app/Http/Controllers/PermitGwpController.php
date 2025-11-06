@@ -5,32 +5,45 @@ namespace App\Http\Controllers;
 use App\Models\GwpAlatLs;
 use App\Models\GwpCek;
 use App\Models\GwpCekHseLs;
-// --- TAMBAHAN BARU UNTUK CHECKLIST ---
 use App\Models\GwpCekPemohonLs;
 use App\Models\PermitGwp;
 use App\Models\PermitGwpApproval;
-use App\Models\User;
-// ---
 use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+// <--- [BARU] Tambahkan ini untuk me-return View
+
 class PermitGwpController extends Controller
 {
-    // ... (fungsi index() dan show() kamu biarkan saja) ...
+    /**
+     * [BARU] Menampilkan halaman frontend (UI) untuk Manajemen Permit GWP.
+     * Ini dipanggil oleh rute '/dashboard/permit-gwp'
+     */
+    public function view(): View
+    {
+        // Pastikan Anda memiliki file Blade di:
+        // resources/views/permit-gwp/index.blade.php
+        return view('permit-gwp.index');
+    }
 
+    /**
+     * [TETAP] Mengembalikan data JSON untuk frontend.
+     * Ini dipanggil oleh rute 'GET /permit-gwp' (dari JavaScript/AJAX)
+     */
     public function index()
     {
         // $data = PermitGwp::with(['approvals', 'completions'])->get();
 
         // Versi lebih baik: Tampilkan juga data pemohon dan supervisor
         $data = PermitGwp::with([
-            'pemohon',    // Asumsi ada relasi 'pemohon' di model PermitGwp
-            'supervisor', // Asumsi ada relasi 'supervisor' di model PermitGwp
+            'pemohon',
+            'supervisor',
             'approvals' => function ($q) {
-                $q->with('approver'); // Asumsi ada relasi 'approver' di model PermitGwpApproval
+                $q->with('approver');
             },
         ])->get();
 
@@ -158,8 +171,6 @@ class PermitGwpController extends Controller
      */
     public function destroy($id)
     {
-        // (Biarkan fungsi destroy kamu apa adanya, 'onDelete('cascade')' akan
-        // otomatis menghapus semua approval dan checklist)
         DB::beginTransaction();
         try {
             $permit = PermitGwp::findOrFail($id);
@@ -174,7 +185,6 @@ class PermitGwpController extends Controller
 
     /**
      * [FUNGSI BARU] Auto-populate lembar jawaban (gwp_cek)
-     * berdasarkan semua data master.
      */
     private function createChecklistForPermit($permit_gwp_id)
     {
@@ -186,9 +196,9 @@ class PermitGwpController extends Controller
         foreach ($pemohonLs as $item) {
             $dataToInsert[] = [
                 'permit_gwp_id' => $permit_gwp_id,
-                'model'         => GwpCekPemohonLs::class, // Nama Model (Polymorphic)
-                'ls_id'         => $item->id,              // ID dari master
-                'value'         => false,                  // Default (belum dicentang)
+                'model'         => GwpCekPemohonLs::class,
+                'ls_id'         => $item->id,
+                'value'         => false,
                 'created_at'    => $now,
                 'updated_at'    => $now,
             ];
@@ -220,7 +230,6 @@ class PermitGwpController extends Controller
             ];
         }
 
-        // 4. Masukkan semua data ke tabel 'gwp_cek' sekaligus
         if (! empty($dataToInsert)) {
             GwpCek::insert($dataToInsert);
         }

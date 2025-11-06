@@ -1,8 +1,11 @@
 <?php
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\PermitGwp;
+use App\Models\User;
+use Illuminate\Http\Request; // <-- 1. TAMBAHKAN
 use Illuminate\Support\Facades\Auth;
+// <-- 2. TAMBAHKAN
 
 class AuthController extends Controller
 {
@@ -43,6 +46,18 @@ class AuthController extends Controller
     // Dashboard admin
     public function dashboard()
     {
-        return view('dashboard.index');
+        // 3. LOGIC BARU UNTUK STATISTIK
+        $stats = [
+            'total_users'      => User::count(),
+            // Status 1 = Pending SPV, 2 = Pending HSE
+            'pending_permits'  => PermitGwp::whereIn('status', [1, 2])->count(),
+            // Status 3 = Approved
+            'approved_permits' => PermitGwp::where('status', 3)->count(),
+            // Status 4 = Rejected
+            'rejected_permits' => PermitGwp::where('status', 4)->count(),
+        ];
+
+        // 4. KIRIM STATS KE VIEW
+        return view('dashboard.index', compact('stats'));
     }
 }
