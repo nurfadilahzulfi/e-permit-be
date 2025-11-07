@@ -8,58 +8,48 @@ class PermitGwp extends Model
     protected $table = 'permit_gwp';
 
     /**
-     * DIUBAH: $fillable disesuaikan dengan migrasi baru kita.
-     * - 'pemilik_lokasi_jenis' DIHAPUS
-     * - 'supervisor_id' DITAMBAHKAN
-     * - 'valid_until' DITAMBAHKAN
+     * DIUBAH TOTAL: $fillable sekarang jauh lebih ramping.
+     * Hanya menyimpan hal spesifik GWP.
      */
     protected $fillable = [
+        'work_permit_id', // <-- Kunci ke "Induk"
         'permit_type_id',
-        'nomor',
-        'tgl_permohonan',
-        'shift_kerja',
-        'lokasi',
-        'deskripsi_pekerjaan',
-        'peralatan_pekerjaan',
-        'pemohon_id',
-        'pemohon_jenis',
-        'supervisor_id', // <-- BARU
-        'status',
-        'valid_until', // <-- BARU
+        'peralatan_pekerjaan', // <-- Spesifik GWP
+        'valid_until',
+        'permit_type_kode', // <-- Denormalisasi (biar cepat)
     ];
 
-    // Sembunyikan permit_type_id dari hasil serialisasi JSON
+    // Sembunyikan permit_type_id
     protected $hidden = ['permit_type_id'];
 
-    // Relasi ke permit type
+    // --- RELASI-RELASI ---
+
+    /**
+     * [BARU] Relasi kembali ke "Induk"
+     */
+    public function workPermit()
+    {
+        return $this->belongsTo(WorkPermit::class, 'work_permit_id');
+    }
+
+    /**
+     * [TETAP] Relasi ke checklist GWP.
+     */
+    public function checklists()
+    {
+        return $this->hasMany(GwpCek::class, 'permit_gwp_id');
+    }
+
+    /**
+     * [TETAP] Relasi ke tipe permit.
+     */
     public function type()
     {
         return $this->belongsTo(PermitType::class, 'permit_type_id');
     }
 
-    // Relasi ke user (pemohon)
-    public function pemohon()
-    {
-        return $this->belongsTo(User::class, 'pemohon_id');
-    }
-
     /**
-     * RELASI BARU: Mendapatkan data Supervisor (User) yang ditugaskan.
+     * RELASI LAMA (seperti pemohon, supervisor, approvals) DIHAPUS
+     * karena sekarang dihandle oleh 'workPermit'.
      */
-    public function supervisor()
-    {
-        return $this->belongsTo(User::class, 'supervisor_id');
-    }
-
-    // Relasi ke approval
-    public function approvals()
-    {
-        return $this->hasMany(PermitGwpApproval::class, 'permit_gwp_id');
-    }
-
-    // Relasi ke completion
-    public function completions()
-    {
-        return $this->hasMany(PermitGwpCompletion::class, 'permit_gwp_id');
-    }
 }

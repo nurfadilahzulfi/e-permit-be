@@ -2,12 +2,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\GwpAlatLs;
+use Illuminate\Contracts\View\View; // <--- [BARU] DITAMBAHKAN
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class GwpAlatLsController extends Controller
 {
+    /**
+     * [BARU] Menampilkan halaman frontend (UI) untuk Master Checklist Alat.
+     * Ini dipanggil oleh rute '/dashboard/gwp-alat-ls'
+     */
+    public function view(): View
+    {
+        // Pastikan Anda memiliki file Blade di:
+        // resources/views/gwp-alat-ls/index.blade.php
+        return view('gwp-alat-ls.index');
+    }
+
+    /**
+     * [TETAP] Mengembalikan data JSON untuk frontend.
+     * Ini dipanggil oleh rute 'GET /gwp-alat-ls' (dari JavaScript/AJAX)
+     */
     public function index()
     {
         $data = GwpAlatLs::all();

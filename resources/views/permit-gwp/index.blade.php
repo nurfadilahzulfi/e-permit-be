@@ -6,406 +6,439 @@
 
 @section('content')
 
+{{-- Wadah untuk notifikasi toast --}}
 <div id="toast-container" class="fixed top-6 right-6 z-[9999] space-y-3 w-full max-w-sm">
-    </div>
+    {{-- Toast akan muncul di sini --}}
+</div>
 
+{{-- Header Halaman --}}
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 dark:border-slate-700">
     <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mb-3 sm:mb-0">
-        Manajemen Permit GWP
+        Daftar Izin GWP Saya
     </h2>
-    {{-- DIUBAH: ID Tombol diganti --}}
     <button id="addGwpBtn"
-            class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl shadow-lg transition duration-300 transform hover:scale-[1.02]">
-        + Ajukan Izin GWP Baru
+            class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl shadow-lg transition duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span>Ajukan Izin GWP Baru</span>
     </button>
 </div>
 
+{{-- Pesan untuk mobile --}}
 <div class="sm:hidden text-sm text-slate-500 dark:text-slate-400 mb-2">
     <span class="font-bold">→</span> Geser tabel ke samping untuk melihat semua kolom.
 </div>
 
+{{-- Container Tabel --}}
 <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700">
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-            <thead class="bg-slate-50 dark:bg-slate-700">
+            
+            {{-- Header Tabel --}}
+            <thead class="bg-slate-50 dark:bg-slate-900/50">
                 <tr>
-                    {{-- DIUBAH: Kolom tabel diganti --}}
-                    <th class="py-3 px-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Nomor Izin</th>
-                    <th class="py-3 px-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Lokasi</th>
-                    <th class="py-3 px-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Tgl. Diajukan</th>
-                    <th class="py-3 px-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
-                    <th class="py-3 px-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Berlaku Hingga</th>
-                    <th class="py-3 px-4 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-20">Aksi</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">No. Izin</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Pekerjaan</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Pemohon</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Supervisor</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Status</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Aksi</th>
                 </tr>
             </thead>
-            {{-- DIUBAH: ID tabel diganti --}}
-            <tbody id="gwpTable" class="text-slate-800 dark:text-slate-200 divide-y divide-slate-200 dark:divide-slate-700">
-                </tbody>
+            
+            {{-- Body Tabel --}}
+            <tbody id="tabel-gwp" class="divide-y divide-slate-200 dark:divide-slate-700">
+                
+                {{-- Baris Loading --}}
+                <tr id="loading-row">
+                    <td colspan="6" class="px-6 py-8 text-center">
+                        <div class="flex justify-center items-center gap-3 text-slate-500 dark:text-slate-400">
+                            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Memuat data...</span>
+                        </div>
+                    </td>
+                </tr>
+
+                {{-- Baris Data Kosong (Template) --}}
+                <template id="empty-row-template">
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                            <div class="flex flex-col items-center justify-center gap-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12 text-slate-300 dark:text-slate-600"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+                                <span class="text-lg font-medium">Anda belum pernah mengajukan izin GWP.</span>
+                                <span class="text-sm">Klik tombol "Ajukan Izin GWP Baru" untuk memulai.</span>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+
+                {{-- Baris Data Izin (Template) --}}
+                <template id="permit-row-template">
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                        {{-- Data No. Izin --}}
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-semibold text-blue-600 dark:text-blue-400" data-field="nomor_izin"></div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400" data-field="tgl_permohonan"></div>
+                        </td>
+                        {{-- Data Pekerjaan --}}
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-slate-800 dark:text-slate-100 max-w-xs truncate" data-field="deskripsi_pekerjaan" title=""></div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400" data-field="lokasi_pekerjaan"></div>
+                        </td>
+                        {{-- Data Pemohon --}}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">
+                            <span data-field="nama_pemohon"></span>
+                        </td>
+                        {{-- Data Supervisor --}}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">
+                            <span data-field="nama_supervisor"></span>
+                        </td>
+                        {{-- Status --}}
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full" data-field="status_badge">
+                                
+                            </span>
+                        </td>
+                        {{-- Aksi --}}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex items-center gap-2">
+                                {{-- Tombol Detail/Checklist --}}
+                                <a href="#" data-action="detail" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors px-2 py-1.5 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50" title="Lihat Detail & Checklist">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+                                </a>
+                                {{-- Tombol Hapus --}}
+                                <button data-action="delete" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors px-2 py-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/50" title="Hapus Izin">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+
+            </tbody>
         </table>
     </div>
 </div>
 
 
-{{-- 
-=====================================
-MODAL UNTUK TAMBAH / EDIT IZIN GWP
-=====================================
---}}
-{{-- DIUBAH: ID Modal diganti --}}
-<div id="gwpModal"
-     class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 transition-opacity duration-300 ease-out opacity-0
-            px-4 py-6">
-    
-    <div id="modalBox"
-         class="bg-white dark:bg-slate-900 rounded-2xl w-full sm:w-2/3 md:w-2/3 lg:w-1/2 shadow-2xl transform scale-95 transition-all duration-300 max-h-[90vh]
-                h-auto flex flex-col border border-slate-200 dark:border-slate-700">
+{{-- ========================================== --}}
+{{-- MODAL UNTUK TAMBAH/EDIT GWP --}}
+{{-- ========================================== --}}
+<div id="gwpModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
         
-        <div class="flex-shrink-0 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-900 z-10 rounded-t-2xl">
-            {{-- DIUBAH: Title Modal diganti --}}
+        {{-- Modal Header --}}
+        <div class="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
             <h3 id="modalTitle" class="text-xl font-bold text-slate-800 dark:text-slate-100">Ajukan Izin GWP Baru</h3>
-            <button onclick="closeModal()" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-2xl transition">&times;</button>
+            <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
         </div>
 
-        <div class="px-6 py-4 overflow-y-auto flex-1">
-            {{-- DIUBAH: ID Form diganti --}}
-            <form id="gwpForm">
-                @csrf
-                <input type="hidden" id="gwpId">
-                
-                <div class="overflow-x-auto">
-                    <div style="min-width: 320px;"> 
-                
-                        {{-- DIUBAH: Form diganti total --}}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">Nomor Izin</label>
-                                <input id="nomor" name="nomor" type="text" required
-                                       class="w-full mt-1 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">Jenis Izin</label>
-                                <select id="permit_type_id" name="permit_type_id" required
-                                        class="w-full mt-1 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
-                                    {{-- Opsi dimuat oleh JS --}}
-                                </select>
-                            </div>
-                        </div>
+        {{-- Modal Body (Form) --}}
+        <form id="gwpForm" class="flex-1 overflow-y-auto p-6 space-y-5">
+            @csrf
+            <input type="hidden" id="gwp_id" name="gwp_id"> {{-- Untuk mode edit --}}
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                            <div>
-                                <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">Shift Kerja</label>
-                                <input id="shift_kerja" name="shift_kerja" type="text" required
-                                       class="w-full mt-1 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500" placeholder="Contoh: Shift 1 (08:00 - 17:00)">
-                            </div>
-                            <div>
-                                <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">Lokasi Pekerjaan</label>
-                                <input id="lokasi" name="lokasi" type="text" required
-                                       class="w-full mt-1 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
-                            </div>
-                        </div>
-        
-                        <div class="mt-4">
-                            <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">Deskripsi Pekerjaan</label>
-                            <textarea id="deskripsi_pekerjaan" name="deskripsi_pekerjaan" rows="3" required
-                                   class="w-full mt-1 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"></textarea>
-                        </div>
+            {{-- 
+            ===================================================
+            PERBAIKAN #1: NOMOR IZIN (READONLY)
+            PERBAIKAN #3: NAMA KOLOM (nomor_izin -> nomor)
+            ===================================================
+            --}}
+            <div>
+                <label for="nomor" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nomor Izin</label>
+                <input type="text" id="nomor" name="nomor" 
+                       class="w-full px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 cursor-not-allowed" 
+                       placeholder="Akan digenerate otomatis"
+                       readonly>
+                <span id="error_nomor" class="text-xs text-red-500 mt-1 hidden"></span>
+            </div>
 
-                        <div class="mt-4">
-                            <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">Peralatan Pekerjaan</label>
-                            <textarea id="peralatan_pekerjaan" name="peralatan_pekerjaan" rows="2" required
-                                   class="w-full mt-1 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"></textarea>
-                        </div>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                            <div>
-                                <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">Jenis Pemohon</label>
-                                <select id="pemohon_jenis" name="pemohon_jenis" required
-                                        class="w-full mt-1 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
-                                    <option value="internal">Internal</option>
-                                    <option value="eksternal">Eksternal</option>
-                                </select>
-                            </div>
-                            
-                            {{-- INI ADALAH INPUT KUNCI (POIN 1) --}}
-                            <div>
-                                <label class="text-slate-700 dark:text-slate-200 text-sm font-medium">
-                                    Supervisor (Pemilik Lokasi)
-                                </label>
-                                <select id="supervisor_id" name="supervisor_id" required
-                                        class="w-full mt-1 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
-                                    {{-- Opsi dimuat oleh JS dari data user --}}
-                                </select>
-                            </div>
-                        </div>
-                        
-                    </div> {{-- Penutup min-width div --}}
-                </div> {{-- Penutup overflow-x-auto div --}}
+            {{-- 
+            ===================================================
+            PERBAIKAN #2: FIELD JENIS IZIN (DIHAPUS)
+            ===================================================
+            --}}
+            {{-- Field Jenis Izin telah dihapus --}}
+
+            {{-- Grid 2 Kolom --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {{-- Supervisor --}}
+                <div>
+                    <label for="supervisor_id" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Supervisor Pemilik Lokasi <span class="text-red-500">*</span></label>
+                    <select id="supervisor_id" name="supervisor_id" class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-500 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition duration-200" required>
+                        <option value="">Pilih Supervisor...</option>
+                        {{-- Opsi Supervisor akan diisi oleh JS --}}
+                    </select>
+                    <span id="error_supervisor_id" class="text-xs text-red-500 mt-1 hidden"></span>
+                </div>
                 
-            </form>
-        </div>
+                {{-- Shift Kerja --}}
+                <div>
+                    <label for="shift_kerja" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Shift Kerja <span class="text-red-500">*</span></label>
+                    <select id="shift_kerja" name="shift_kerja" class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-500 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition duration-200" required>
+                        <option value="">Pilih Shift...</option>
+                        <option value="Pagi">Pagi (08:00 - 17:00)</option>
+                        <option value="Malam">Malam (20:00 - 05:00)</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                    <span id="error_shift_kerja" class="text-xs text-red-500 mt-1 hidden"></span>
+                </div>
+            </div>
 
-        <div class="flex-shrink-0 px-6 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 bg-white dark:bg-slate-900 z-10 rounded-b-2xl">
-            <button onclick="closeModal()" 
-                    class="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-slate-700 
-                           dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 
-                           font-semibold text-sm transition">
+            {{-- 
+            ===================================================
+            PERBAIKAN #3: NAMA KOLOM (lokasi_pekerjaan -> lokasi)
+            ===================================================
+            --}}
+            <div>
+                <label for="lokasi" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Lokasi Pekerjaan <span class="text-red-500">*</span></label>
+                <input type="text" id="lokasi" name="lokasi" 
+                       class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-500 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition duration-200" 
+                       placeholder="Misal: Area Gedung A, Lantai 2" required>
+                <span id="error_lokasi" class="text-xs text-red-500 mt-1 hidden"></span>
+            </div>
+
+            {{-- Deskripsi Pekerjaan --}}
+            <div>
+                <label for="deskripsi_pekerjaan" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Deskripsi Pekerjaan <span class="text-red-500">*</span></label>
+                <textarea id="deskripsi_pekerjaan" name="deskripsi_pekerjaan" rows="3" 
+                          class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-500 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition duration-200" 
+                          placeholder="Jelaskan pekerjaan yang akan dilakukan..." required></textarea>
+                <span id="error_deskripsi_pekerjaan" class="text-xs text-red-500 mt-1 hidden"></span>
+            </div>
+
+            {{-- Peralatan Pekerjaan --}}
+            <div>
+                <label for="peralatan_pekerjaan" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Peralatan yang Digunakan <span class="text-red-500">*</span></label>
+                <textarea id="peralatan_pekerjaan" name="peralatan_pekerjaan" rows="3" 
+                          class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-500 dark:focus:border-blue-500 dark:focus:ring-blue-500 transition duration-200" 
+                          placeholder="Sebutkan semua alat, misal: Gerinda, Mesin Las, Bor..." required></textarea>
+                <span id="error_peralatan_pekerjaan" class="text-xs text-red-500 mt-1 hidden"></span>
+            </div>
+
+        </form>
+
+        {{-- Modal Footer --}}
+        <div class="flex items-center justify-end p-5 border-t border-slate-200 dark:border-slate-700">
+            <button id="cancelBtn" 
+                    class="px-5 py-2.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 text-sm font-medium transition-colors duration-200 mr-3">
                 Batal
             </button>
-            <button id="saveBtn" type="submit" form="gwpForm" {{-- DIUBAH: form="gwpForm" --}}
-                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold text-sm shadow transition">
-                Simpan & Ajukan
+            <button id="saveBtn" 
+                    class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800">
+                Simpan Permohonan
             </button>
         </div>
     </div>
 </div>
 
+@endsection
+
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Referensi Elemen ---
-    const modal = document.getElementById('gwpModal');
-    const modalBox = document.getElementById('modalBox');
-    const addBtn = document.getElementById('addGwpBtn');
-    const form = document.getElementById('gwpForm');
-    const saveBtn = document.getElementById('saveBtn');
-    const toastContainer = document.getElementById('toast-container');
-    const supervisorSelect = document.getElementById('supervisor_id');
-    const permitTypeSelect = document.getElementById('permit_type_id');
-
-    // --- Event Listeners ---
-    addBtn.addEventListener('click', openAddModal);
-    form.addEventListener('submit', savePermit);
+    // URL API
+    const API_URL = "{{ url('permit-gwp') }}";
+    const USER_API_URL = "{{ url('user') }}"; // Untuk ambil daftar supervisor
     
-    // --- Inisialisasi ---
-    loadPermits();
-    // Kita muat data supervisor & permit type sekali saja di awal
-    loadSupervisors(); 
-    loadPermitTypes();
+    // Elemen Global
+    const toastContainer = document.getElementById('toast-container');
+    const tableBody = document.getElementById('tabel-gwp');
+    const loadingRow = document.getElementById('loading-row');
+    const permitRowTemplate = document.getElementById('permit-row-template');
+    const emptyRowTemplate = document.getElementById('empty-row-template');
+    
+    // Elemen Modal
+    const modal = document.getElementById('gwpModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const addGwpBtn = document.getElementById('addGwpBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const gwpForm = document.getElementById('gwpForm');
+    
+    // Elemen Form
+    const gwpIdField = document.getElementById('gwp_id');
+    const supervisorSelect = document.getElementById('supervisor_id');
+    // ... (elemen form lain bisa ditambahkan di sini jika perlu) ...
 
-    // --- Modal ---
-    function showModal() {
-        modal.classList.remove('hidden', 'opacity-0');
-        modal.classList.add('flex', 'opacity-100');
-        modalBox.classList.replace('scale-95', 'scale-100');
-    }
 
-    function closeModal() {
-        modal.classList.replace('opacity-100', 'opacity-0');
-        modalBox.classList.replace('scale-100', 'scale-95');
-        setTimeout(() => modal.classList.add('hidden'), 300);
-    }
-    window.closeModal = closeModal; // Agar bisa dipanggil dari HTML
-
-    function openAddModal() {
-        form.reset();
-        document.getElementById('gwpId').value = '';
-        document.getElementById('modalTitle').innerText = 'Ajukan Izin GWP Baru';
-        showModal();
-    }
-
-    // --- FUNGSI BARU UNTUK MENGISI DROPDOWN ---
+    // ===========================================
+    // FUNGSI UTAMA (CRUD & ACTIONS)
+    // ===========================================
 
     /**
-     * Memuat daftar Supervisor (User) untuk dropdown
-     */
-    async function loadSupervisors() {
-        try {
-            const res = await fetch('{{ route("user.index") }}', { headers: { 'Accept': 'application/json' } });
-            const json = await res.json();
-            if (!json.success) throw new Error('Gagal memuat data user');
-
-            supervisorSelect.innerHTML = '<option value="">Pilih Supervisor...</option>'; // Opsi default
-            
-            json.data.forEach(user => {
-                // Asumsi: Supervisor adalah yang jabatannya 'Supervisor'
-                if (user.jabatan.toLowerCase() === 'supervisor') {
-                    const option = new Option(user.nama, user.id);
-                    supervisorSelect.add(option);
-                }
-            });
-        } catch (e) {
-            console.error(e);
-            supervisorSelect.innerHTML = '<option value="">Gagal memuat supervisor</option>';
-        }
-    }
-
-    /**
-     * Memuat daftar Jenis Izin (Permit Types) untuk dropdown
-     */
-    async function loadPermitTypes() {
-        try {
-            const res = await fetch('{{ route("permit-types.index") }}', { headers: { 'Accept': 'application/json' } });
-            const json = await res.json();
-            if (!json.success) throw new Error('Gagal memuat data jenis izin');
-
-            permitTypeSelect.innerHTML = '<option value="">Pilih Jenis Izin...</option>'; // Opsi default
-            
-            json.data.forEach(type => {
-                const option = new Option(`${type.kode} - ${type.nama}`, type.id);
-                permitTypeSelect.add(option);
-            });
-        } catch (e) {
-            console.error(e);
-            permitTypeSelect.innerHTML = '<option value="">Gagal memuat jenis izin</option>';
-        }
-    }
-
-
-    // --- CRUD ---
-
-    /**
-     * Memuat daftar Izin GWP (Poin 3)
+     * Memuat daftar izin GWP dari API
      */
     async function loadPermits() {
-        const tbody = document.getElementById('gwpTable');
-        tbody.innerHTML = `<tr><td colspan="6" class="py-4 px-4 text-center text-slate-400">Memuat data...</td></tr>`;
-        try {
-            // DIUBAH: Fetch ke route GWP
-            const res = await fetch('{{ route("permit-gwp.index") }}', { headers: { 'Accept': 'application/json' } });
-            const json = await res.json();
+        loadingRow.classList.remove('hidden');
+        tableBody.querySelectorAll('tr:not(#loading-row)').forEach(row => row.remove());
 
-            if (!res.ok) throw new Error(json.message || 'Gagal mengambil data');
-            
-            tbody.innerHTML = ''; // Bersihkan loading
-            
-            if (json.data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-4 px-4 text-center text-slate-400">Belum ada data izin GWP.</td></tr>`;
+        try {
+            const response = await fetch(API_URL, {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            });
+            if (!response.ok) throw new Error(`Gagal memuat data. Status: ${response.status}`);
+            const result = await response.json();
+
+            loadingRow.classList.add('hidden');
+            if (!result.success || result.data.length === 0) {
+                tableBody.appendChild(emptyRowTemplate.content.cloneNode(true));
                 return;
             }
 
-            // DIUBAH: Loop data GWP
-            json.data.forEach(p => {
+            result.data.forEach(permit => {
+                const row = permitRowTemplate.content.cloneNode(true);
+                const newRow = row.querySelector('tr');
+                newRow.dataset.id = permit.id;
+
+                // Isi data ke kolom
+                // [PERBAIKAN] Sesuaikan dengan nama kolom dari DB (nomor)
+                row.querySelector('[data-field="nomor_izin"]').textContent = permit.nomor; 
+                row.querySelector('[data-field="tgl_permohonan"]').textContent = formatTanggal(permit.tgl_permohonan);
+                row.querySelector('[data-field="deskripsi_pekerjaan"]').textContent = permit.deskripsi_pekerjaan;
+                row.querySelector('[data-field="deskripsi_pekerjaan"]').title = permit.deskripsi_pekerjaan;
+                // [PERBAIKAN] Sesuaikan dengan nama kolom dari DB (lokasi)
+                row.querySelector('[data-field="lokasi_pekerjaan"]').textContent = permit.lokasi;
+                row.querySelector('[data-field="nama_pemohon"]').textContent = permit.pemohon ? permit.pemohon.nama : 'N/A';
+                row.querySelector('[data-field="nama_supervisor"]').textContent = permit.supervisor ? permit.supervisor.nama : 'N/A';
                 
-                // LOGIC STATUS (POIN 3)
-                let statusText = '';
-                let statusClass = '';
-                switch (p.status) {
-                    case 1: statusText = 'Pending SPV'; statusClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'; break;
-                    case 2: statusText = 'Pending HSE'; statusClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'; break;
-                    case 3: statusText = 'Approved'; statusClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'; break;
-                    case 4: statusText = 'Rejected'; statusClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'; break;
-                    default: statusText = 'Draft'; statusClass = 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200';
+                // Status Badge
+                const statusBadge = row.querySelector('[data-field="status_badge"]');
+                const { text, color } = getStatusInfo(permit.status);
+                statusBadge.textContent = text;
+                statusBadge.className = `px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${color}`;
+
+                // Event Listeners untuk Tombol Aksi
+                const detailButton = row.querySelector('[data-action="detail"]');
+                const deleteButton = row.querySelector('[data-action="delete"]');
+
+                // Arahkan tombol detail ke halaman checklist
+                detailButton.href = `{{ url('gwp-cek/view') }}/${permit.id}`;
+                
+                deleteButton.addEventListener('click', () => handleDelete(permit.id));
+                
+                // Sembunyikan tombol hapus jika status bukan DRAFT (misal 0) atau REJECTED (4)
+                if (permit.status !== 0 && permit.status !== 4) {
+                    deleteButton.remove();
                 }
 
-                // Format tanggal
-                const tglDiajukan = new Date(p.tgl_permohonan).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-                const tglBerlaku = p.valid_until ? new Date(p.valid_until).toLocaleString('id-ID', { dateStyle: 'medium' }) : '-';
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700 transition">
-                        <td class="py-3 px-4 text-sm whitespace-nowrap font-medium text-blue-600 dark:text-blue-400">${p.nomor}</td>
-                        <td class="py-3 px-4 text-sm whitespace-nowrap">${p.lokasi}</td>
-                        <td class="py-3 px-4 text-sm whitespace-nowrap">${tglDiajukan}</td>
-                        <td class="py-3 px-4 text-sm whitespace-nowrap">
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">
-                                ${statusText}
-                            </span>
-                        </td>
-                        <td class="py-3 px-4 text-sm whitespace-nowrap">${tglBerlaku}</td>
-                        <td class="py-3 px-4 text-center text-sm whitespace-nowrap">
-                            <button onclick="editPermit(${p.id})" 
-                                    class="text-yellow-600 dark:text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400 font-semibold mr-3 transition">
-                                Edit
-                            </button>
-                            <button onclick="deletePermit(${p.id})" 
-                                    class="text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-400 font-semibold transition">
-                                Hapus
-                            </button>
-                        </td>
-                    </tr>`;
+                tableBody.appendChild(row);
             });
+
         } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="6" class="py-4 px-4 text-center text-red-500">Gagal memuat data: ${e.message}</td></tr>`;
-            showToast('Gagal memuat data!', 'error');
+            loadingRow.classList.add('hidden');
+            console.error("Error:", e);
+            showToast(`Error: ${e.message}`, 'error');
         }
     }
 
     /**
-     * Membuka modal Edit
+     * Memuat daftar user (Supervisor) untuk dropdown di modal
      */
-    window.editPermit = async (id) => {
+    async function loadFormOptions() {
         try {
-            const res = await fetch(`/permit-gwp/${id}`, { headers: { 'Accept': 'application/json' } });
-            const json = await res.json();
-            if (!res.ok) throw new Error(json.message || 'Gagal mengambil data.');
-
-            const p = json.data;
-            // Isi semua field di form
-            document.getElementById('gwpId').value = p.id;
-            document.getElementById('nomor').value = p.nomor;
-            document.getElementById('permit_type_id').value = p.permit_type_id;
-            document.getElementById('shift_kerja').value = p.shift_kerja;
-            document.getElementById('lokasi').value = p.lokasi;
-            document.getElementById('deskripsi_pekerjaan').value = p.deskripsi_pekerjaan;
-            document.getElementById('peralatan_pekerjaan').value = p.peralatan_pekerjaan;
-            document.getElementById('pemohon_jenis').value = p.pemohon_jenis;
-            document.getElementById('supervisor_id').value = p.supervisor_id;
-            
-            document.getElementById('modalTitle').innerText = 'Edit Izin: ' + p.nomor;
-            showModal();
-        } catch (e) {
-            showToast(e.message, 'error');
-        }
-    }
-
-    /**
-     * Menyimpan data (Create atau Update)
-     */
-    async function savePermit(e) {
-        e.preventDefault();
-        const id = document.getElementById('gwpId').value;
-        const formData = new FormData(form);
-        
-        let url = id ? `/permit-gwp/${id}` : '{{ route("permit-gwp.store") }}';
-        if (id) formData.append('_method', 'PUT'); // Method spoofing untuk Update
-        
-        saveBtn.disabled = true; 
-        saveBtn.innerHTML = '<span class="animate-spin">⏳</span> Menyimpan...';
-
-        try {
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-                body: formData
+            // Ambil data User
+            const response = await fetch(USER_API_URL, {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
             });
-            
-            const data = await res.json();
+            if (!response.ok) throw new Error('Gagal memuat daftar user.');
+            const result = await response.json();
 
-            if (!res.ok) {
-                if (res.status === 422 && data.errors) {
-                    const validationErrors = Object.values(data.errors).flat();
-                    const errorMessage = validationErrors.join('<br>');
-                    showToast(`<strong>Gagal Validasi:</strong><br>${errorMessage}`, 'error');
-                } else {
-                    throw new Error(data.message || 'Terjadi kesalahan');
-                }
-            } else if (data.success) {
-                showToast(data.message || 'Berhasil!', 'success');
-                closeModal(); 
-                loadPermits(); // Muat ulang tabel
+            if (result.success) {
+                // Filter hanya untuk supervisor
+                const supervisors = result.data.filter(user => user.role === 'supervisor');
+                supervisorSelect.innerHTML = '<option value="">Pilih Supervisor...</option>'; // Reset
+                supervisors.forEach(user => {
+                    const option = new Option(user.nama, user.id);
+                    supervisorSelect.add(option);
+                });
             }
 
+            // (Bisa tambahkan load Jenis Izin di sini jika diperlukan lagi)
+            
         } catch (e) {
+            console.error("Error loadFormOptions:", e);
             showToast(e.message, 'error');
-        } finally {
-            saveBtn.disabled = false; 
-            saveBtn.textContent = 'Simpan & Ajukan';
         }
     }
 
     /**
-     * Menghapus data
+     * Menangani penyimpanan data (Tambah Baru atau Update)
      */
-    window.deletePermit = async (id) => {
-        if (!confirm('Apakah Anda yakin ingin menghapus izin ini?')) return;
+    async function handleSave() {
+        // Reset error
+        document.querySelectorAll('[id^="error_"]').forEach(el => {
+            el.classList.add('hidden');
+            el.textContent = '';
+        });
+
+        const formData = new FormData(gwpForm);
+        const data = Object.fromEntries(formData.entries());
+        const id = gwpIdField.value;
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        // Tambahkan _method untuk PUT
+        if(method === 'PUT') {
+            formData.append('_method', 'PUT');
+        }
+        
+        // Kirim data menggunakan FormData (bukan JSON)
+        try {
+            const response = await fetch(url, {
+                method: 'POST', // Laravel menangani PUT/PATCH via POST + _method
+                body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                if (response.status === 422) {
+                    // Tampilkan error validasi
+                    displayValidationErrors(result.errors);
+                    throw new Error('Data yang Anda masukkan tidak valid.');
+                }
+                throw new Error(result.error || result.message || 'Terjadi kesalahan server.');
+            }
+
+            showToast(result.message, 'success');
+            closeModal();
+            loadPermits(); // Muat ulang tabel
+
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+    
+    /**
+     * Menangani Hapus Data
+     */
+    async function handleDelete(id) {
+        if (!confirm('Apakah Anda yakin ingin menghapus izin ini? Aksi ini tidak dapat dibatalkan.')) {
+            return;
+        }
         
         try {
-            const res = await fetch(`/permit-gwp/${id}`, { 
-                method: 'DELETE', 
-                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' } 
+            const response = await fetch(`${API_URL}/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
             });
-            const data = await res.json();
-            if (data.success) { 
-                showToast('Izin berhasil dihapus!', 'success'); 
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('Izin berhasil dihapus.', 'success'); 
                 loadPermits(); // Muat ulang tabel
             } else {
                 throw new Error(data.message || 'Gagal menghapus izin.');
@@ -415,8 +448,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ===========================================
+    // FUNGSI BANTU (HELPER)
+    // ===========================================
+
     /**
-     * FUNGSI NOTIFIKASI MODERN (Bisa Menumpuk)
+     * Buka Modal
+     */
+    function openModal() {
+        gwpForm.reset();
+        gwpIdField.value = '';
+        modalTitle.textContent = 'Ajukan Izin GWP Baru';
+        // Reset error
+        document.querySelectorAll('[id^="error_"]').forEach(el => {
+            el.classList.add('hidden');
+            el.textContent = '';
+        });
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.querySelector('.transform').classList.remove('scale-95');
+        }, 10);
+    }
+
+    /**
+     * Tutup Modal
+     */
+    function closeModal() {
+        modal.classList.add('opacity-0');
+        modal.querySelector('.transform').classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300); // Sesuaikan dengan durasi transisi
+    }
+
+    /**
+     * Tampilkan error validasi di bawah field
+     */
+    function displayValidationErrors(errors) {
+        for (const [key, messages] of Object.entries(errors)) {
+            const errorElement = document.getElementById(`error_${key}`);
+            if (errorElement) {
+                errorElement.textContent = messages.join(' ');
+                errorElement.classList.remove('hidden');
+            }
+        }
+    }
+
+    /**
+     * Konversi tanggal ke format "12 Okt 2024, 14:30"
+     */
+    function formatTanggal(dateString) {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('id-ID', { 
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            }).format(date).replace('.', ',');
+        } catch (e) { return dateString; }
+    }
+
+    /**
+     * Konversi status ID ke Teks dan Warna
+     */
+    function getStatusInfo(status) {
+        // Status: 0=Draft, 1=Pending SPV, 2=Pending HSE, 3=Approved, 4=Rejected, 5=Closed
+        switch (Number(status)) {
+            case 0: return { text: 'Draft', color: 'bg-slate-200 text-slate-700' };
+            case 1: return { text: 'Pending SPV', color: 'bg-yellow-200 text-yellow-800' };
+            case 2: return { text: 'Pending HSE', color: 'bg-yellow-200 text-yellow-800' };
+            case 3: return { text: 'Approved', color: 'bg-green-200 text-green-800' };
+            case 4: return { text: 'Rejected', color: 'bg-red-200 text-red-800' };
+            case 5: return { text: 'Closed', color: 'bg-blue-200 text-blue-800' };
+            default: return { text: 'Unknown', color: 'bg-slate-200 text-slate-700' };
+        }
+    }
+
+    /**
+     * FUNGSI NOTIFIKASI MODERN (Toast)
      */
     window.showToast = (message, type = 'success') => {
         const toast = document.createElement('div');
@@ -439,14 +550,37 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             toast.classList.remove('opacity-0', 'translate-x-10');
             toast.classList.add('opacity-100', 'translate-x-0');
-        }, 50);
-
-        // Hapus setelah 3.5 detik
+        }, 10);
+        
+        // Animasi keluar
         setTimeout(() => {
             toast.classList.add('opacity-0', 'translate-x-10');
-            setTimeout(() => toast.remove(), 300);
-        }, 3500);
-    }
-});
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 5000); // Hilang setelah 5 detik
+    };
+
+
+    // ===========================================
+    // INISIALISASI & EVENT LISTENERS
+    // ===========================================
+    document.addEventListener('DOMContentLoaded', () => {
+        loadPermits();
+        loadFormOptions();
+
+        // Tombol Buka Modal
+        addGwpBtn.addEventListener('click', openModal);
+        
+        // Tombol Tutup Modal
+        closeModalBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+        
+        // Tombol Simpan
+        saveBtn.addEventListener('click', handleSave);
+        gwpForm.addEventListener('submit', (e) => {
+            e.preventDefault(); // Mencegah submit form tradisional
+            handleSave();
+        });
+    });
+
 </script>
-@endsection
+@endpush

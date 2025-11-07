@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules; // <-- Pastikan ini ada
 use Illuminate\Validation\ValidationException;
+
 // <-- Pastikan ini ada
 
 class UserController extends Controller

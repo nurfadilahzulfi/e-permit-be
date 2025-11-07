@@ -2,12 +2,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\PermitType;
+use Illuminate\Contracts\View\View; // <--- [BARU] DITAMBAHKAN
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class PermitTypeController extends Controller
 {
+    /**
+     * [BARU] Menampilkan halaman frontend (UI) untuk Master Jenis Izin.
+     * Ini dipanggil oleh rute '/dashboard/permit-types'
+     */
+    public function view(): View
+    {
+        // Pastikan Anda memiliki file Blade di:
+        // resources/views/permit-types/index.blade.php
+        return view('permit-types.index');
+    }
+
+    /**
+     * [TETAP] Mengembalikan data JSON untuk frontend.
+     * Ini dipanggil oleh rute 'GET /permit-types' (dari JavaScript/AJAX)
+     */
     public function index()
     {
         $data = PermitType::all();

@@ -2,12 +2,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\GwpCekPemohonLs;
+use Illuminate\Contracts\View\View; // <--- [BARU] DITAMBAHKAN
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class GwpCekPemohonLsController extends Controller
 {
+    /**
+     * [BARU] Menampilkan halaman frontend (UI) untuk Master Checklist Pemohon.
+     * Ini dipanggil oleh rute '/dashboard/gwp-cek-pemohon-ls'
+     */
+    public function view(): View
+    {
+        // Pastikan Anda memiliki file Blade di:
+        // resources/views/gwp-cek-pemohon-ls/index.blade.php
+        return view('gwp-cek-pemohon-ls.index');
+    }
+
+    /**
+     * [TETAP] Mengembalikan data JSON untuk frontend.
+     * Ini dipanggil oleh rute 'GET /gwp-cek-pemohon-ls' (dari JavaScript/AJAX)
+     */
     public function index()
     {
         $data = GwpCekPemohonLs::all();

@@ -2,54 +2,64 @@
 namespace App\Http\Controllers;
 
 use App\Models\GwpCek;
-use App\Models\PermitGwp; // <-- 1. TAMBAHKAN INI
+use App\Models\PermitGwp;  // Model GWP (Anak)
+use App\Models\WorkPermit; // [BARU] Model Induk
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class GwpCekController extends Controller
 {
     /**
-     * [FUNGSI BARU] Menampilkan halaman HTML (Blade) untuk Checklist.
-     * Ini adalah halaman yang dilihat user di browser.
+     * [DIUBAH] Menampilkan halaman HTML (Blade) untuk Checklist.
      */
     public function viewChecklistPage($permit_gwp_id)
     {
-        // Ambil data izin utamanya untuk ditampilkan (misal: judul halaman)
-        $permit = PermitGwp::findOrFail($permit_gwp_id);
+        // 1. Ambil data GWP (anak) beserta relasi ke induknya (workPermit)
+        $permitGwp = PermitGwp::with('workPermit.pemohon')->findOrFail($permit_gwp_id);
 
-        // Kirim data permit (termasuk ID-nya) ke view
-        // Pastikan file view 'gwp-cek.index' ada
+        // 2. Ambil data induknya
+        $workPermit = $permitGwp->workPermit;
+
+        // 3. Kirim KEDUA data (induk & anak) ke view
         return view('gwp-cek.index', [
-            'permit' => $permit,
+            'permitGwp'  => $permitGwp,
+            'workPermit' => $workPermit, // <-- [BARU] Kirim data induk
         ]);
     }
 
     /**
-     * [LOGIC DIPERBAIKI] Mengambil DATA (JSON) semua item checklist
-     * untuk satu Permit GWP tertentu. (Dipanggil oleh JavaScript)
+     * [TETAP] Mengambil DATA (JSON) semua item checklist
      */
-    public function index($permit_gwp_id) // Parameter dari route
+    public function index($permit_gwp_id)
     {
-        // 'ls' adalah relasi MorphTo yang kita definisikan di Model GwpCek
+        // 'ls' adalah relasi MorphTo
         $data = GwpCek::where('permit_gwp_id', $permit_gwp_id)
-            ->with('ls') // 'ls' adalah nama fungsi relasi di Model GwpCek
+            ->with('ls')
             ->get();
 
-        if ($data->isEmpty()) {
-            // Ini akan terjadi jika PermitGwpController@store belum membuat checklist
-            return response()->json(['success' => false, 'message' => 'Checklist tidak ditemukan atau belum dibuat untuk permit ini.'], 404);
-        }
+        // Mengelompokkan berdasarkan 'model'
+        $grouped = $data->groupBy('model')->map(function ($items) {
+            return $items->map(function ($item) {
+                return [
+                    'id'    => $item->id,
+                    'nama'  => $item->ls ? $item->ls->nama : 'N/A', // Ambil nama dari relasi 'ls'
+                    'value' => (bool) $item->value,
+                ];
+            });
+        });
 
-        // Kelompokkan berdasarkan 'model' (Pemohon, HSE, Alat)
-        $groupedData = $data->groupBy('model');
+        // Pastikan semua grup ada
+        $result = [
+            'pemohon' => $grouped->get('App\Models\GwpCekPemohonLs', []),
+            'hse'     => $grouped->get('App\Models\GwpCekHseLs', []),
+            'alat'    => $grouped->get('App\Models\GwpAlatLs', []),
+        ];
 
-        return response()->json(['success' => true, 'data' => $groupedData]);
+        return response()->json(['success' => true, 'data' => $result]);
     }
 
     /**
-     * [LOGIC DIPERBAIKI] Update satu item checklist (mencentang kotak).
-     * $id di sini adalah ID dari tabel 'gwp_cek' (lembar jawaban).
+     * [TETAP] Memperbarui satu item checklist (true/false).
      */
     public function update(Request $request, $id)
     {
@@ -57,36 +67,16 @@ class GwpCekController extends Controller
         try {
             $data = GwpCek::findOrFail($id);
 
-            // Validasi hanya 'value' (true/false)
-            $validated = $request->validate([
-                'value' => 'required|boolean',
-            ]);
+            // (Nanti tambahkan otorisasi: hanya pemohon/hse yg boleh ubah)
 
+            $validated = $request->validate(['value' => 'required|boolean']);
             $data->update($validated);
+
             DB::commit();
-
             return response()->json(['success' => true, 'message' => 'Checklist item diperbarui.', 'data' => $data]);
-
-        } catch (ValidationException $e) {
-            DB::rollBack();
-            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-    }
-
-    // --- FUNGSI LAMA (STORE/DESTROY/SHOW) TIDAK DIPERLUKAN LAGI ---
-    public function show($id)
-    {
-        return response()->json(['success' => false, 'error' => 'Metode tidak diizinkan.'], 405);
-    }
-    public function store(Request $request)
-    {
-        return response()->json(['success' => false, 'error' => 'Metode tidak diizinkan. Checklist dibuat otomatis.'], 405);
-    }
-    public function destroy($id)
-    {
-        return response()->json(['success' => false, 'error' => 'Metode tidak diizinkan. Checklist dihapus otomatis.'], 405);
     }
 }

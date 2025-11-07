@@ -1,19 +1,14 @@
 <!DOCTYPE html>
 <html lang="id" class="scroll-smooth">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-R">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'E-Permit Dashboard')</title>
     
-    <!-- Memuat Font Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Memuat CSS (Pastikan path ini benar) -->
     <link href="{{ mix('css/app.css') }}" rel="stylesheet">
-    
-    <!-- 1. TAMBAHKAN ALPINE.JS UNTUK INTERAKTIVITAS -->
     <script src="//unpkg.com/alpinejs" defer></script>
     
     @stack('styles')
@@ -25,15 +20,12 @@
     $inactiveClass = 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300';
     @endphp
 
-    <!-- Sidebar -->
     <aside id="sidebar" 
            class="fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 shadow-xl transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-40
                   flex flex-col">
         
-        <!-- Logo/Header Sidebar -->
         <div class="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
             <a href="{{ url('/dashboard') }}" class="flex items-center gap-2">
-                <!-- Ikon Logo (SVG Inline) -->
                 <span class="inline-block p-2 bg-blue-600 text-white rounded-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
                         <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>
@@ -44,10 +36,8 @@
             <button id="closeSidebar" class="md:hidden text-2xl text-slate-600 dark:text-slate-300">&times;</button>
         </div>
 
-        <!-- 2. NAVIGASI UTAMA (DIGANTI TOTAL DENGAN DROPDOWN) -->
         <nav class="p-4 space-y-2 flex-1 overflow-y-auto">
             
-            <!-- Link Dashboard Utama -->
             <a href="{{ url('/dashboard') }}" 
                class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition-all duration-200
                       {{ Request::is('dashboard') ? $activeClass : $inactiveClass }}">
@@ -56,59 +46,74 @@
             </a>
 
             {{-- =================================== --}}
-            {{-- GRUP MENU: PROSES IZIN --}}
+            {{-- GRUP MENU: PROSES IZIN (ALUR BARU) --}}
             {{-- =================================== --}}
-            {{-- Logika: Buka dropdown jika rute saat ini cocok --}}
-            <div x-data="{ open: {{ Request::is('permit-gwp*') || Request::is('gwp-cek/view*') ? 'true' : 'false' }} }">
+            @php
+            // [DIUBAH] Tambahkan URL 'work-permit-completion'
+            $isProsesIzinActive = Request::is('dashboard/work-permit*') || 
+                                  Request::is('dashboard/my-permits*') || 
+                                  Request::is('dashboard/work-permit-approval*') || 
+                                  Request::is('dashboard/work-permit-completion*') || // <-- [BARU]
+                                  Request::is('gwp-cek/view*');
+            @endphp
+            <div x-data="{ open: {{ $isProsesIzinActive ? 'true' : 'false' }} }">
                 
                 {{-- Tombol Dropdown Utama --}}
                 <button @click="open = !open" 
                         class="w-full flex items-center justify-between gap-3 py-2.5 px-4 rounded-lg transition-all duration-200 {{ $inactiveClass }}">
-                    <div class="flex items-center gap-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2Z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg>
-                        <span class="font-medium">Proses Izin</span>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 transition-transform" :class="{'rotate-90': open}"><path d="m9 18 6-6-6-6"/></svg>
+                    {{-- ... (Icon dan Teks "Proses Izin") ... --}}
                 </button>
                 
                 {{-- Konten Dropdown (Sub-menu) --}}
                 <div x-show="open" x-transition class="pl-5 space-y-1 mt-1">
                     
-                    {{-- Hanya Pemohon & Admin --}}
-                    @if(in_array(Auth::user()->role, ['pemohon', 'admin']))
-                    <a href="{{ url('/permit-gwp') }}"
+                    {{-- Hanya HSE & Admin --}}
+                    @if(in_array(Auth::user()->role, ['hse', 'admin']))
+                    <a href="{{ route('dashboard.work-permit') }}"
                        class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
-                              {{ Request::is('permit-gwp') ? $activeClass : $inactiveClass }}">
-                        Ajukan Izin GWP
+                              {{ Request::is('dashboard/work-permit') ? $activeClass : $inactiveClass }}">
+                        Inisiasi Izin Kerja
+                    </a>
+                    @endif
+                    
+                    {{-- Hanya Pemohon --}}
+                    @if(in_array(Auth::user()->role, ['pemohon']))
+                    <a href="{{ route('dashboard.my-permits') }}"
+                       class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
+                              {{ Request::is('dashboard/my-permits*') ? $activeClass : $inactiveClass }}">
+                        Tugas Izin Saya
                     </a>
                     @endif
                     
                     {{-- Hanya Supervisor, HSE, & Admin --}}
                     @if(in_array(Auth::user()->role, ['supervisor', 'hse', 'admin']))
-                    <a href="{{ route('permit-gwp-approval.index') }}"
+                    <a href="{{ route('dashboard.work-permit-approval') }}"
                        class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
-                              {{ Request::is('permit-gwp-approval*') ? $activeClass : $inactiveClass }}">
+                              {{ Request::is('dashboard/work-permit-approval*') ? $activeClass : $inactiveClass }}">
                         Persetujuan Izin
                     </a>
                     @endif
-                    
-                    {{-- Nanti untuk Fitur 2 (Completion) --}}
-                    {{-- 
-                    <a href="{{ url('/permit-gwp-completion') }}"
+
+                    {{-- [BARU] Dilihat oleh semua role --}}
+                    @if(in_array(Auth::user()->role, ['supervisor', 'hse', 'pemohon']))
+                    <a href="{{ route('dashboard.work-permit-completion') }}"
                        class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
-                              {{ Request::is('permit-gwp-completion*') ? $activeClass : $inactiveClass }}">
-                        Penutupan Izin
+                              {{ Request::is('dashboard/work-permit-completion*') ? $activeClass : $inactiveClass }}">
+                        Pengesahan Selesai
                     </a>
-                    --}}
+                    @endif
+                    
                 </div>
             </div>
-
             {{-- =================================== --}}
             {{-- GRUP MENU: ADMIN / MASTER DATA --}}
             {{-- =================================== --}}
             @if(Auth::user()->role == 'admin')
-            {{-- Logika: Buka dropdown jika rute saat ini cocok --}}
-            <div x-data="{ open: {{ Request::is('dashboard/user*') || Request::is('user*') || Request::is('permit-types*') || Request::is('gwp-cek-pemohon-ls*') || Request::is('gwp-cek-hse-ls*') || Request::is('gwp-alat-ls*') ? 'true' : 'false' }} }">
+            @php
+            // Cek URL untuk dropdown
+            $isMasterDataActive = Request::is('dashboard/user*') || Request::is('dashboard/permit-types*') || Request::is('dashboard/gwp-cek-pemohon-ls*') || Request::is('dashboard/gwp-cek-hse-ls*') || Request::is('dashboard/gwp-alat-ls*');
+            @endphp
+            <div x-data="{ open: {{ $isMasterDataActive ? 'true' : 'false' }} }">
                 {{-- Tombol Dropdown Utama --}}
                 <button @click="open = !open" 
                         class="w-full flex items-center justify-between gap-3 py-2.5 px-4 rounded-lg transition-all duration-200 {{ $inactiveClass }}">
@@ -121,41 +126,48 @@
                 
                 {{-- Konten Dropdown (Sub-menu) --}}
                 <div x-show="open" x-transition class="pl-5 space-y-1 mt-1">
-                    
                     <a href="{{ route('dashboard.user') }}"
                        class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
-                              {{ Request::is('dashboard/user*') || Request::is('user*') ? $activeClass : $inactiveClass }}">
+                              {{ Request::is('dashboard/user*') ? $activeClass : $inactiveClass }}">
                         Manage User
                     </a>
-                    <a href="{{ url('/permit-types') }}"
+                    <a href="{{ route('dashboard.permit-types') }}"
                        class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
-                              {{ Request::is('permit-types*') ? $activeClass : $inactiveClass }}">
+                              {{ Request::is('dashboard/permit-types*') ? $activeClass : $inactiveClass }}">
                         Jenis Izin
                     </a>
-                    <a href="{{ url('/gwp-cek-pemohon-ls') }}"
+                    <a href="{{ route('dashboard.gwp-cek-pemohon-ls') }}"
                        class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
-                              {{ Request::is('gwp-cek-pemohon-ls*') ? $activeClass : $inactiveClass }}">
+                              {{ Request::is('dashboard/gwp-cek-pemohon-ls*') ? $activeClass : $inactiveClass }}">
                         Checklist Pemohon
                     </a>
-                    <a href="{{ url('/gwp-cek-hse-ls') }}"
+                    <a href="{{ route('dashboard.gwp-cek-hse-ls') }}"
                        class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
-                              {{ Request::is('gwp-cek-hse-ls*') ? $activeClass : $inactiveClass }}">
+                              {{ Request::is('dashboard/gwp-cek-hse-ls*') ? $activeClass : $inactiveClass }}">
                         Checklist HSE
                     </a>
-                    <a href="{{ url('/gwp-alat-ls') }}"
+                    <a href="{{ route('dashboard.gwp-alat-ls') }}"
                        class="flex items-center gap-3 py-2 px-4 rounded-lg transition-all duration-200 text-sm
-                              {{ Request::is('gwp-alat-ls*') ? $activeClass : $inactiveClass }}">
+                              {{ Request::is('dashboard/gwp-alat-ls*') ? $activeClass : $inactiveClass }}">
                         Checklist Alat
                     </a>
-
                 </div>
             </div>
             @endif
             
         </nav>
 
-        <!-- Bagian Bawah Sidebar (Logout) -->
         <div class="border-t border-slate-200 dark:border-slate-700 p-4">
+            
+            <a href="{{ route('profile.show') }}" 
+               class="w-full flex items-center gap-3 py-2.5 px-4 rounded-lg font-medium 
+                      text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 
+                      transition-all duration-200 mb-2
+                      {{ Request::is('profile*') ? $activeClass : $inactiveClass }}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                <span>Edit Profile</span>
+            </a>
+
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
                 <button class="w-full flex items-center gap-3 py-2.5 px-4 rounded-lg font-medium text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-all duration-200">
@@ -166,13 +178,10 @@
         </div>
     </aside>
 
-    <!-- Overlay untuk mobile -->
     <div id="overlay" class="fixed inset-0 bg-black bg-opacity-40 hidden md:hidden z-30"></div>
 
-    <!-- Main Content -->
     <div class="md:ml-64 min-h-screen flex flex-col transition-all duration-300">
 
-        <!-- Navbar (Header Utama) -->
         <header class="flex items-center justify-between bg-white dark:bg-slate-900 shadow-sm px-4 sm:px-6 py-3 sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800">
             <div class="flex items-center gap-3">
                 <button id="menuButton" class="md:hidden text-2xl text-slate-500 dark:text-slate-300">
@@ -186,7 +195,6 @@
                     Hai, <strong class="font-medium">{{ Auth::user()->nama ?? 'User' }}</strong>
                 </span>
 
-                <!-- Tombol Dark Mode -->
                 <button id="themeToggle" 
                         class="w-10 h-10 rounded-full flex items-center justify-center 
                                bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 
@@ -195,7 +203,6 @@
                     <svg id="themeIconSun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 hidden"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                 </button>
 
-                <!-- Avatar User -->
                 <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm" 
                      title="{{ Auth::user()->nama ?? 'User' }}">
                     {{ substr(Auth::user()->nama ?? 'U', 0, 1) }}
@@ -203,19 +210,16 @@
             </div>
         </header>
 
-        <!-- Page Content -->
         <main class="p-4 sm:p-6 lg:p-8 flex-1">
             @yield('content')
         </main>
 
-        <!-- Footer -->
         <footer class="text-center py-4 text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800
                          bg-white dark:bg-slate-900">
             &copy; {{ date('Y') }} <strong>E-Permit System</strong> | All Rights Reserved
         </footer>
     </div>
 
-    <!-- JS: Sidebar & Dark Mode -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const sidebar = document.getElementById('sidebar');

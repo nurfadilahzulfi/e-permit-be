@@ -6,6 +6,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
+
 // <-- 1. DITAMBAHKAN
 
 class User extends Authenticatable
@@ -87,5 +88,33 @@ class User extends Authenticatable
     public function approvalTasks()
     {
         return $this->hasMany(PermitGwpApproval::class, 'approver_id');
+    }
+    public function workPermitsCreated()
+    {
+        return $this->hasMany(WorkPermit::class, 'pemohon_id');
+    }
+
+    /**
+     * Relasi ke Izin Kerja yang perlu dia SUPERVISI.
+     */
+    public function workPermitsSupervised()
+    {
+        return $this->hasMany(WorkPermit::class, 'supervisor_id');
+    }
+
+    /**
+     * Relasi ke Izin Kerja yang dia INISIASI (sebagai HSE).
+     */
+    public function workPermitsInitiated()
+    {
+        return $this->hasMany(WorkPermit::class, 'hse_id');
+    }
+
+    /**
+     * Relasi ke LOG PERSETUJUAN yang perlu dia proses.
+     */
+    public function workPermitApprovals()
+    {
+        return $this->hasMany(WorkPermitApproval::class, 'approver_id');
     }
 }

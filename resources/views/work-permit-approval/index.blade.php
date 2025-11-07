@@ -1,24 +1,19 @@
 @extends('layouts.app')
 
-{{-- DIUBAH: Title untuk halaman approval --}}
-@section('title', 'Persetujuan Izin - E-Permit')
-@section('page-title', 'Persetujuan Izin GWP')
+@section('title', 'Persetujuan Izin Kerja - E-Permit')
+@section('page-title', 'Persetujuan Izin Kerja')
 
 @section('content')
 
 {{-- Wadah untuk notifikasi toast --}}
-<div id="toast-container" class="fixed top-6 right-6 z-[9999] space-y-3 w-full max-w-sm">
-    {{-- Toast akan muncul di sini --}}
-</div>
+<div id="toast-container" class="fixed top-6 right-6 z-[9999] space-y-3 w-full max-w-sm"></div>
 
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 dark:border-slate-700">
     <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mb-3 sm:mb-0">
         Menunggu Persetujuan Anda
     </h2>
-    {{-- Tombol "Tambah" sudah dihapus --}}
 </div>
 
-{{-- Pesan untuk mobile --}}
 <div class="sm:hidden text-sm text-slate-500 dark:text-slate-400 mb-2">
     <span class="font-bold">→</span> Geser tabel ke samping untuk melihat semua kolom.
 </div>
@@ -28,18 +23,16 @@
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
             
-            {{-- Header Tabel --}}
             <thead class="bg-slate-50 dark:bg-slate-900/50">
                 <tr>
-                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">No. Izin</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">No. Pekerjaan</th>
                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Pekerjaan</th>
                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Pemohon</th>
-                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Tgl. Dibuat</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Tgl. Dibuat (Log)</th>
                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Aksi</th>
                 </tr>
             </thead>
             
-            {{-- Body Tabel --}}
             <tbody id="tabel-approval" class="divide-y divide-slate-200 dark:divide-slate-700">
                 
                 {{-- Baris Loading --}}
@@ -70,19 +63,14 @@
                 {{-- Baris Data Izin (Template) --}}
                 <template id="task-row-template">
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                        {{-- Data No. Izin --}}
+                        {{-- Data No. Pekerjaan --}}
                         <td class="px-6 py-4 whitespace-nowrap">
-                            {{-- 
-                            ===================================================
-                            PERBAIKAN #1: Mengganti data-field="nomor_izin" menjadi "nomor"
-                            ===================================================
-                            --}}
-                            <div class="text-sm font-semibold text-blue-600 dark:text-blue-400" data-field="nomor"></div>
-                            <div class="text-xs text-slate-500 dark:text-slate-400" data-field="jenis_izin"></div>
+                            <div class="text-sm font-semibold text-blue-600 dark:text-blue-400" data-field="nomor_pekerjaan"></div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400" data-field="urutan_persetujuan"></div>
                         </td>
                         {{-- Data Pekerjaan --}}
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-slate-800 dark:text-slate-100" data-field="deskripsi_pekerjaan"></div>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-slate-800 dark:text-slate-100 max-w-xs truncate" data-field="deskripsi_pekerjaan" title=""></div>
                             <div class="text-xs text-slate-500 dark:text-slate-400" data-field="lokasi_pekerjaan"></div>
                         </td>
                         {{-- Data Pemohon --}}
@@ -95,10 +83,10 @@
                         </td>
                         {{-- Data Aksi --}}
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex items-center gap-2">
-                                {{-- Tombol Detail --}}
-                                <a href="#" data-action="detail" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors px-2 py-1.5 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50" title="Lihat Detail">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <div class="flex items-center gap-2" data-field="aksi-buttons">
+                                {{-- Tombol Detail (Checklist GWP) --}}
+                                <a href="#" data-action="detail-gwp" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors px-2 py-1.5 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50" title="Lihat Checklist GWP">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
                                 </a>
                                 {{-- Tombol Reject --}}
                                 <button data-action="reject" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors px-2 py-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/50" title="Tolak Izin">
@@ -112,7 +100,6 @@
                         </td>
                     </tr>
                 </template>
-
             </tbody>
         </table>
     </div>
@@ -122,8 +109,8 @@
 
 @push('scripts')
 <script>
-    // URL API (digunakan oleh loadTasks)
-    const API_URL = "{{ url('permit-gwp-approval') }}";
+    // URL API
+    const API_URL = "{{ route('work-permit-approval.index') }}";
     
     // Elemen Global
     const toastContainer = document.getElementById('toast-container');
@@ -135,60 +122,32 @@
     // ===========================================
     // UTILITY FUNCTIONS
     // ===========================================
-
-    /**
-     * Tampilkan notifikasi toast modern
-     */
     window.showToast = (message, type = 'success') => {
         const toast = document.createElement('div');
         const bgColor = type === 'success' 
             ? 'bg-gradient-to-r from-green-500 to-emerald-600' 
             : 'bg-gradient-to-r from-red-500 to-rose-600';
-        
-        toast.className = `
-            px-5 py-3 rounded-xl shadow-xl text-white text-sm font-medium flex items-center gap-3
-            ${bgColor}
-            opacity-0 translate-x-10 transition-all duration-300 ease-out
-        `;
-        
+        toast.className = `px-5 py-3 rounded-xl shadow-xl text-white text-sm font-medium flex items-center gap-3 ${bgColor} opacity-0 translate-x-10 transition-all duration-300 ease-out`;
         const icon = type === 'success' ? '✅' : '⚠️';
         toast.innerHTML = `<span class="text-lg">${icon}</span><div>${message}</div>`;
-        
         toastContainer.appendChild(toast);
-        
-        // Animasi masuk
-        setTimeout(() => {
-            toast.classList.remove('opacity-0', 'translate-x-10');
-            toast.classList.add('opacity-100', 'translate-x-0');
-        }, 10);
-        
-        // Animasi keluar
+        setTimeout(() => toast.classList.remove('opacity-0', 'translate-x-10'), 10);
         setTimeout(() => {
             toast.classList.add('opacity-0', 'translate-x-10');
             toast.addEventListener('transitionend', () => toast.remove());
-        }, 5000); // Hilang setelah 5 detik
+        }, 5000);
     };
 
-    /**
-     * Format tanggal (misal: "12 Okt 2024, 14:30")
-     */
     function formatTanggal(dateString) {
         if (!dateString) return 'N/A';
         try {
             const date = new Date(dateString);
             return new Intl.DateTimeFormat('id-ID', { 
-                day: 'numeric', 
-                month: 'short', 
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
             }).format(date).replace('.', ',');
-        } catch (e) {
-            console.error("Format tanggal error:", e);
-            return dateString;
-        }
+        } catch (e) { return dateString; }
     }
-
 
     // ===========================================
     // FUNGSI UTAMA (CRUD & ACTIONS)
@@ -198,67 +157,70 @@
      * Memuat daftar izin yang menunggu persetujuan dari API
      */
     async function loadTasks() {
-        // 1. Tampilkan loading, hapus data lama
         loadingRow.classList.remove('hidden');
         tableBody.querySelectorAll('tr:not(#loading-row)').forEach(row => row.remove());
 
         try {
             const response = await fetch(API_URL, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                }
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
             });
-
-            if (!response.ok) {
-                throw new Error(`Gagal memuat data. Status: ${response.status}`);
-            }
-
+            if (!response.ok) throw new Error(`Gagal memuat data. Status: ${response.status}`);
             const result = await response.json();
             
-            // 2. Sembunyikan loading
             loadingRow.classList.add('hidden');
-
             if (!result.success || result.data.length === 0) {
-                // Tampilkan baris data kosong
-                const emptyRow = emptyRowTemplate.content.cloneNode(true);
-                tableBody.appendChild(emptyRow);
+                tableBody.appendChild(emptyRowTemplate.content.cloneNode(true));
                 return;
             }
 
             // 3. Loop data dan masukkan ke tabel
             result.data.forEach(item => {
-                const permit = item.permit_gwp; // Data izin utama
-                if (!permit) return; // Lewati jika data permit tidak ada
+                const permit = item.work_permit; 
+                if (!permit) return; 
 
                 const row = taskRowTemplate.content.cloneNode(true);
                 const newRow = row.querySelector('tr');
                 
-                // Simpan data di elemen baris
-                newRow.dataset.id = item.id; // Ini adalah ID Persetujuan (approval_id)
-                newRow.dataset.permitId = permit.id; // Ini adalah ID Izin Utama (permit_gwp_id)
+                newRow.dataset.id = item.id; 
+                newRow.dataset.permitId = permit.id; 
 
                 // Isi data ke kolom
-                {{-- 
-                ===================================================
-                PERBAIKAN #2: Mengganti permit.nomor_izin menjadi permit.nomor
-                ===================================================
-                --}}
-                row.querySelector('[data-field="nomor"]').textContent = permit.nomor;
-                row.querySelector('[data-field="jenis_izin"]').textContent = permit.permit_type_kode;
+                row.querySelector('[data-field="nomor_pekerjaan"]').textContent = permit.nomor_pekerjaan;
+                row.querySelector('[data-field="urutan_persetujuan"]').textContent = `Persetujuan Tahap: ${item.urutan}`;
                 row.querySelector('[data-field="deskripsi_pekerjaan"]').textContent = permit.deskripsi_pekerjaan;
-                row.querySelector('[data-field="lokasi_pekerjaan"]').textContent = permit.lokasi; // Pastikan controller kirim 'lokasi'
+                row.querySelector('[data-field="deskripsi_pekerjaan"]').title = permit.deskripsi_pekerjaan;
+                row.querySelector('[data-field="lokasi_pekerjaan"]').textContent = permit.lokasi;
                 row.querySelector('[data-field="nama_pemohon"]').textContent = permit.pemohon ? permit.pemohon.nama : 'N/A';
                 row.querySelector('[data-field="tanggal_dibuat"]').textContent = formatTanggal(item.created_at);
 
-                // Tambahkan event listener untuk tombol aksi
-                const detailButton = row.querySelector('[data-action="detail"]');
-                const approveButton = row.querySelector('[data-action="approve"]');
-                const rejectButton = row.querySelector('[data-action="reject"]');
+                // Event Listeners untuk Tombol Aksi
+                const aksiContainer = row.querySelector('[data-field="aksi-buttons"]');
+                const gwpButton = aksiContainer.querySelector('[data-action="detail-gwp"]');
+                const approveButton = aksiContainer.querySelector('[data-action="approve"]');
+                const rejectButton = aksiContainer.querySelector('[data-action="reject"]');
 
-                // Arahkan tombol detail ke halaman checklist
-                detailButton.href = `{{ url('gwp-cek/view') }}/${permit.id}`;
+                // Arahkan tombol GWP (jika ada)
+                if (permit.permit_gwp) {
+                    gwpButton.href = `{{ url('gwp-cek/view') }}/${permit.permit_gwp.id}`;
+                } else {
+                    gwpButton.remove(); // Hapus tombol GWP jika bukan GWP
+                }
                 
+                {{-- 
+                ===================================================
+                [INI PERBARUANNYA] Tambahkan tombol untuk CSE
+                ===================================================
+                --}}
+                if (permit.permit_cse) {
+                    const cseButton = document.createElement('a');
+                    cseButton.href = `{{ url('cse-cek/view') }}/${permit.permit_cse.id}`;
+                    cseButton.title = "Lihat Checklist CSE";
+                    cseButton.className = "text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors px-2 py-1.5 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50";
+                    cseButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2Z"></path><path d="m12 16-4-4 4-4"></path><path d="M16 12H8"></path></svg>`;
+                    // Sisipkan sebelum tombol reject
+                    aksiContainer.insertBefore(cseButton, rejectButton);
+                }
+
                 approveButton.addEventListener('click', () => handleApprove(item.id));
                 rejectButton.addEventListener('click', () => handleReject(item.id));
 
@@ -281,7 +243,7 @@
         }
 
         try {
-            const response = await fetch(`{{ route('permit-gwp-approval.approve') }}`, {
+            const response = await fetch(`{{ route('work-permit-approval.approve') }}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -290,18 +252,14 @@
                 },
                 body: JSON.stringify({
                     approval_id: approvalId,
-                    catatan: 'Disetujui' // Catatan bisa opsional saat approve
+                    catatan: 'Disetujui'
                 })
             });
 
             const result = await response.json();
+            if (!result.success) throw new Error(result.error || result.message);
 
-            if (!result.success) {
-                // Tampilkan error dari server (misal: validasi gagal)
-                throw new Error(result.error || result.message || 'Gagal menyetujui izin.');
-            }
-
-            showToast('Izin berhasil disetujui.', 'success');
+            showToast(result.message, 'success');
             loadTasks(); // Muat ulang daftar
             
         } catch (e) {
@@ -319,14 +277,13 @@
             showToast('Penolakan dibatalkan. Alasan wajib diisi.', 'error');
             return;
         }
-
         if (catatan.length < 5) {
             showToast('Alasan penolakan terlalu pendek.', 'error');
             return;
         }
 
         try {
-            const response = await fetch(`{{ route('permit-gwp-approval.reject') }}`, {
+            const response = await fetch(`{{ route('work-permit-approval.reject') }}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -335,18 +292,14 @@
                 },
                 body: JSON.stringify({
                     approval_id: approvalId,
-                    catatan: catatan // Kirim alasan penolakan
+                    catatan: catatan
                 })
             });
 
             const result = await response.json();
+            if (!result.success) throw new Error(result.error || result.message);
 
-            if (!result.success) {
-                // Tampilkan error dari server
-                throw new Error(result.error || result.message || 'Gagal menolak izin.');
-            }
-
-            showToast('Izin berhasil ditolak.', 'success');
+            showToast(result.message, 'success');
             loadTasks(); // Muat ulang daftar
             
         } catch (e) { 

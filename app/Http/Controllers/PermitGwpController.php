@@ -1,13 +1,15 @@
 <?php
 namespace App\Http\Controllers;
 
-// --- MODEL & LIBRARY YANG DIPERLUKAN ---
+// --- MODEL & LIBRARY YANG DIPERLUKAN ---\
 use App\Models\GwpAlatLs;
 use App\Models\GwpCek;
 use App\Models\GwpCekHseLs;
 use App\Models\GwpCekPemohonLs;
 use App\Models\PermitGwp;
 use App\Models\PermitGwpApproval;
+use App\Models\PermitType;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -15,92 +17,119 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-// <--- [BARU] Tambahkan ini untuk me-return View
-
 class PermitGwpController extends Controller
 {
     /**
-     * [BARU] Menampilkan halaman frontend (UI) untuk Manajemen Permit GWP.
-     * Ini dipanggil oleh rute '/dashboard/permit-gwp'
+     * [TETAP] Menampilkan halaman frontend (UI)
      */
     public function view(): View
     {
-        // Pastikan Anda memiliki file Blade di:
-        // resources/views/permit-gwp/index.blade.php
         return view('permit-gwp.index');
     }
 
     /**
-     * [TETAP] Mengembalikan data JSON untuk frontend.
-     * Ini dipanggil oleh rute 'GET /permit-gwp' (dari JavaScript/AJAX)
+     * [TETAP] Mengembalikan data JSON (Sudah difilter per pemohon)
      */
     public function index()
     {
-        // $data = PermitGwp::with(['approvals', 'completions'])->get();
+        $user  = Auth::user();
+        $query = PermitGwp::with(['approvals', 'pemohon', 'supervisor']);
 
-        // Versi lebih baik: Tampilkan juga data pemohon dan supervisor
-        $data = PermitGwp::with([
-            'pemohon',
-            'supervisor',
-            'approvals' => function ($q) {
-                $q->with('approver');
-            },
-        ])->get();
-
-        return response()->json(['success' => true, 'data' => $data]);
-    }
-
-    public function show($id)
-    {
-        $data = PermitGwp::with(['approvals', 'completions', 'pemohon', 'supervisor'])->find($id);
-
-        if (! $data) {
-            return response()->json(['success' => false, 'message' => 'Permit tidak ditemukan.'], 404);
+        if ($user->role === 'pemohon') {
+            // Pemohon hanya lihat miliknya
+            $query->where('pemohon_id', $user->id);
         }
+
+        $data = $query->latest()->get();
         return response()->json(['success' => true, 'data' => $data]);
     }
 
     /**
-     * [DIPERBARUI] Menyimpan (Submit) Permit GWP baru DAN MEMBUAT CHECKLIST
+     * [DIUBAH] Logika untuk menyimpan izin baru
      */
     public function store(Request $request)
     {
         DB::beginTransaction();
         try {
+            // 1. Validasi data
             $validated = $request->validate([
-                'permit_type_id'      => 'required|integer|exists:permit_types,id',
-                'nomor'               => 'required|string|unique:permit_gwp,nomor',
+                'supervisor_id'       => 'required|integer|exists:user,id',
                 'shift_kerja'         => 'required|string|max:20',
                 'lokasi'              => 'required|string|max:255',
                 'deskripsi_pekerjaan' => 'required|string',
                 'peralatan_pekerjaan' => 'required|string',
-                'pemohon_jenis'       => 'required|in:internal,eksternal',
-                'supervisor_id'       => 'required|integer|exists:user,id',
             ]);
 
-            $validated['pemohon_id']     = Auth::id();
-            $validated['tgl_permohonan'] = Carbon::now();
-            $validated['status']         = 1; // Langsung ke 'Pending Supervisor'
+            $now = Carbon::now();
 
-            // 1. Simpan data Izin GWP utama
-            $permit = PermitGwp::create($validated);
+            // 2. [TETAP] Cari ID untuk "GWP" secara otomatis
+            $gwpType = PermitType::where('kode', 'GWP')->first();
+            if (! $gwpType) {
+                throw ValidationException::withMessages(['permit_type_id' => 'Master data "GWP" tidak ditemukan.']);
+            }
 
-            // 2. Buat log persetujuan pertama (Untuk Supervisor)
+            // 3. [TETAP] Generate Nomor Izin Otomatis
+            $bulan       = $now->format('m');
+            $bulanRomawi = $this->getBulanRomawi($bulan);
+            $tahun       = $now->format('Y');
+
+            $countThisMonth = PermitGwp::whereYear('created_at', $tahun)
+                ->whereMonth('created_at', $bulan)
+                ->count();
+
+            $nomorRevisi = str_pad($countThisMonth + 1, 3, '0', STR_PAD_LEFT);
+            $nomorIzin   = "{$nomorRevisi}/INL/HSE/{$bulanRomawi}/{$tahun}";
+
+            // 4. Siapkan data untuk disimpan
+            $dataToSave = $validated + [
+                'pemohon_id'       => Auth::id(),
+                'tgl_permohonan'   => $now,
+                'status'           => 1, // Status 1 = Pending (Menunggu urutan 1, yaitu HSE)
+                'nomor'            => $nomorIzin,
+                'permit_type_id'   => $gwpType->id,
+                'permit_type_kode' => $gwpType->kode,
+            ];
+
+            // 5. Simpan Izin GWP (Permit Utama)
+            $permit = PermitGwp::create($dataToSave);
+
+            // 6. Buat log persetujuan (approval)
+            // =================================================================
+            // !!! INI PERBAIKANNYA (Alur Dibalik Sesuai Flow Anda) !!!
+            // =================================================================
+
+            // 6a. Buat log untuk SEMUA user HSE (Urutan 1)
+            // Sesuai Langkah 5 di flow Anda: "HSE megecek"
+            $hseUsers = User::where('role', 'hse')->get();
+            foreach ($hseUsers as $hse) {
+                PermitGwpApproval::create([
+                    'permit_gwp_id'      => $permit->id,
+                    'approver_id'        => $hse->id,
+                    'role_persetujuan'   => 'hse',
+                    'urutan'             => 1, // <-- BENAR: HSE jadi urutan 1
+                    'status_persetujuan' => 0,
+                ]);
+            }
+
+            // 6b. Untuk Supervisor (pemilik lokasi) (Urutan 2)
+            // Sesuai Langkah 6 di flow Anda: "Supervisor akan memberikan persetujuan"
             PermitGwpApproval::create([
                 'permit_gwp_id'      => $permit->id,
-                'approver_id'        => $request->supervisor_id,
-                'role_persetujuan'   => 'SUPERVISOR',
-                'status_persetujuan' => 0, // 0 = Pending
+                'approver_id'        => $validated['supervisor_id'],
+                'role_persetujuan'   => 'supervisor',
+                'urutan'             => 2, // <-- BENAR: Supervisor jadi urutan 2
+                'status_persetujuan' => 0,
             ]);
+            // =================================================================
+            // AKHIR DARI PERBAIKAN
+            // =================================================================
 
-            // --- LOGIC CHECKLIST BARU ---
-            // 3. Panggil fungsi private untuk auto-populate checklist
-            $this->createChecklistForPermit($permit->id);
-            // --- AKHIR LOGIC CHECKLIST BARU ---
+            // 7. Buat lembar checklist kosong (GwpCek)
+            $this->createEmptyChecklists($permit->id, $now);
 
             DB::commit();
 
-            return response()->json(['success' => true, 'message' => 'Permit berhasil diajukan dan menunggu persetujuan Supervisor.', 'data' => $permit], 201);
+            return response()->json(['success' => true, 'message' => 'Izin GWP berhasil dibuat.', 'data' => $permit], 201);
 
         } catch (ValidationException $e) {
             DB::rollBack();
@@ -112,51 +141,57 @@ class PermitGwpController extends Controller
     }
 
     /**
-     * [DIPERBARUI] Update data Permit GWP
+     * [TETAP] Menampilkan detail satu Izin GWP
+     */
+    public function show($id)
+    {
+        $data = PermitGwp::with(['approvals.approver', 'pemohon', 'supervisor'])->find($id);
+
+        if (! $data) {
+            return response()->json(['success' => false, 'message' => 'Data tidak ditemukan.'], 404);
+        }
+        return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    /**
+     * [TETAP] Update Izin GWP
      */
     public function update(Request $request, $id)
     {
-        $permit = PermitGwp::findOrFail($id);
-
-        // Hanya izinkan update jika status masih Draft (0) atau Rejected (4)
-        if (! in_array($permit->status, [0, 4])) {
-            return response()->json(['success' => false, 'error' => 'Izin tidak dapat diubah karena sedang dalam proses persetujuan.'], 403);
-        }
-
         DB::beginTransaction();
         try {
+            $data = PermitGwp::findOrFail($id);
+
+            // Otorisasi
+            if (Auth::id() !== $data->pemohon_id && Auth::user()->role !== 'admin') {
+                return response()->json(['success' => false, 'error' => 'Anda tidak berhak mengedit izin ini.'], 403);
+            }
+
+            // Hanya izinkan edit jika status masih Draft (0) atau Rejected (4)
+            if ($data->status !== 0 && $data->status !== 4) {
+                return response()->json(['success' => false, 'error' => 'Izin yang sedang diproses tidak dapat diedit.'], 422);
+            }
+
+            // Validasi data (Mirip dengan store)
             $validated = $request->validate([
-                'permit_type_id'      => 'required|integer|exists:permit_types,id',
-                'nomor'               => 'required|string|unique:permit_gwp,nomor,' . $id,
+                'supervisor_id'       => 'required|integer|exists:user,id',
                 'shift_kerja'         => 'required|string|max:20',
                 'lokasi'              => 'required|string|max:255',
                 'deskripsi_pekerjaan' => 'required|string',
                 'peralatan_pekerjaan' => 'required|string',
-                'pemohon_jenis'       => 'required|in:internal,eksternal',
-                'supervisor_id'       => 'required|integer|exists:user,id',
             ]);
 
-            $validated['status'] = 1; // Set status kembali ke 'Pending Supervisor'
-            $permit->update($validated);
+            // Saat mengedit, reset status kembali ke 'Pending HSE'
+            $validated['status'] = 1;
 
-            // Hapus log approval lama dan checklist lama
-            PermitGwpApproval::where('permit_gwp_id', $permit->id)->delete();
-            GwpCek::where('permit_gwp_id', $permit->id)->delete(); // Hapus checklist lama
+            $data->update($validated);
 
-            // Buat log approval baru
-            PermitGwpApproval::create([
-                'permit_gwp_id'      => $permit->id,
-                'approver_id'        => $request->supervisor_id,
-                'role_persetujuan'   => 'SUPERVISOR',
-                'status_persetujuan' => 0, // Pending
-            ]);
-
-            // Buat ulang checklist
-            $this->createChecklistForPermit($permit->id);
+            // (CATATAN: Jika supervisor diganti, kita harus menghapus approval lama
+            // dan membuat yang baru. Logika ini bisa ditambahkan jika diperlukan)
 
             DB::commit();
+            return response()->json(['success' => true, 'message' => 'Izin GWP berhasil diperbarui.', 'data' => $data]);
 
-            return response()->json(['success' => true, 'message' => 'Permit berhasil diperbarui dan diajukan ulang.', 'data' => $permit]);
         } catch (ValidationException $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'errors' => $e->errors()], 422);
@@ -167,16 +202,21 @@ class PermitGwpController extends Controller
     }
 
     /**
-     * Hapus Permit GWP
+     * [TETAP] Hapus Izin GWP
      */
     public function destroy($id)
     {
         DB::beginTransaction();
         try {
-            $permit = PermitGwp::findOrFail($id);
-            $permit->delete();
+            $data = PermitGwp::findOrFail($id);
+
+            if (Auth::id() !== $data->pemohon_id && Auth::user()->role !== 'admin') {
+                return response()->json(['success' => false, 'error' => 'Anda tidak berhak menghapus izin ini.'], 403);
+            }
+
+            $data->delete();
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Permit berhasil dihapus.']);
+            return response()->json(['success' => true, 'message' => 'Izin GWP berhasil dihapus.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
@@ -184,54 +224,52 @@ class PermitGwpController extends Controller
     }
 
     /**
-     * [FUNGSI BARU] Auto-populate lembar jawaban (gwp_cek)
+     * [TETAP] Fungsi private untuk membuat checklist kosong
      */
-    private function createChecklistForPermit($permit_gwp_id)
+    private function createEmptyChecklists($permit_gwp_id, $now)
     {
         $dataToInsert = [];
-        $now          = Carbon::now();
-
-        // 1. Ambil semua master checklist Pemohon
-        $pemohonLs = GwpCekPemohonLs::all();
+        $pemohonLs    = GwpCekPemohonLs::all();
         foreach ($pemohonLs as $item) {
             $dataToInsert[] = [
-                'permit_gwp_id' => $permit_gwp_id,
-                'model'         => GwpCekPemohonLs::class,
-                'ls_id'         => $item->id,
-                'value'         => false,
-                'created_at'    => $now,
-                'updated_at'    => $now,
+                'permit_gwp_id' => $permit_gwp_id, 'model' => GwpCekPemohonLs::class,
+                'ls_id'         => $item->id, 'value'      => false,
+                'created_at'    => $now, 'updated_at'      => $now,
             ];
         }
 
-        // 2. Ambil semua master checklist HSE
         $hseLs = GwpCekHseLs::all();
         foreach ($hseLs as $item) {
             $dataToInsert[] = [
-                'permit_gwp_id' => $permit_gwp_id,
-                'model'         => GwpCekHseLs::class,
-                'ls_id'         => $item->id,
-                'value'         => false,
-                'created_at'    => $now,
-                'updated_at'    => $now,
+                'permit_gwp_id' => $permit_gwp_id, 'model' => GwpCekHseLs::class,
+                'ls_id'         => $item->id, 'value'      => false,
+                'created_at'    => $now, 'updated_at'      => $now,
             ];
         }
 
-        // 3. Ambil semua master checklist Alat
         $alatLs = GwpAlatLs::all();
         foreach ($alatLs as $item) {
             $dataToInsert[] = [
-                'permit_gwp_id' => $permit_gwp_id,
-                'model'         => GwpAlatLs::class,
-                'ls_id'         => $item->id,
-                'value'         => false,
-                'created_at'    => $now,
-                'updated_at'    => $now,
+                'permit_gwp_id' => $permit_gwp_id, 'model' => GwpAlatLs::class,
+                'ls_id'         => $item->id, 'value'      => false,
+                'created_at'    => $now, 'updated_at'      => $now,
             ];
         }
 
         if (! empty($dataToInsert)) {
             GwpCek::insert($dataToInsert);
         }
+    }
+
+    /**
+     * [TETAP] Helper function untuk mengubah bulan numerik ke romawi
+     */
+    private function getBulanRomawi($bulan)
+    {
+        $romawi = [
+            '01' => 'I', '02'   => 'II', '03'   => 'III', '04' => 'IV', '05' => 'V', '06'  => 'VI',
+            '07' => 'VII', '08' => 'VIII', '09' => 'IX', '10'  => 'X', '11'  => 'XI', '12' => 'XII',
+        ];
+        return $romawi[$bulan] ?? $bulan;
     }
 }

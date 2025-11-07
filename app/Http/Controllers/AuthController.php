@@ -1,11 +1,10 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\PermitGwp;
 use App\Models\User;
-use Illuminate\Http\Request; // <-- 1. TAMBAHKAN
+use App\Models\WorkPermit; // Pastikan model ini sudah benar
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-// <-- 2. TAMBAHKAN
 
 class AuthController extends Controller
 {
@@ -25,7 +24,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            return redirect()->route('dashboard');
+            return redirect()->route('dashboard'); // Mengarahkan ke route 'dashboard'
         }
 
         return back()->withErrors([
@@ -43,21 +42,34 @@ class AuthController extends Controller
         return redirect('/login');
     }
 
-    // Dashboard admin
+    // ======================================================
+    // INI ADALAH FUNGSI YANG DIPERBAIKI
+    // ======================================================
     public function dashboard()
     {
-        // 3. LOGIC BARU UNTUK STATISTIK
+        // 1. Ambil data
+        $total_users = User::count();
+
+        // Asumsi:
+        // Status 1 = Pending Checklist
+        // Status 2 = Pending Approval
+        $pending_permits = WorkPermit::whereIn('status', [1, 2])->count();
+
+        // Status 3 = Approved (Siap Dikerjakan)
+        $approved_permits = WorkPermit::where('status', 3)->count();
+
+        // Asumsi: Status 4 = Rejected (Sesuaikan jika status Anda berbeda)
+        $rejected_permits = WorkPermit::where('status', 4)->count();
+
+        // 2. Buat array $stats dengan KEY YANG BENAR (sesuai index.blade.php)
         $stats = [
-            'total_users'      => User::count(),
-            // Status 1 = Pending SPV, 2 = Pending HSE
-            'pending_permits'  => PermitGwp::whereIn('status', [1, 2])->count(),
-            // Status 3 = Approved
-            'approved_permits' => PermitGwp::where('status', 3)->count(),
-            // Status 4 = Rejected
-            'rejected_permits' => PermitGwp::where('status', 4)->count(),
+            'total_users'      => $total_users,
+            'pending_permits'  => $pending_permits,
+            'approved_permits' => $approved_permits,
+            'rejected_permits' => $rejected_permits,
         ];
 
-        // 4. KIRIM STATS KE VIEW
+        // 3. Kirim data $stats ke view
         return view('dashboard.index', compact('stats'));
     }
 }
