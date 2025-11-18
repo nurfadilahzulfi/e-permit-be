@@ -17,6 +17,7 @@ class CreatePermitTypesTable extends Migration
             $table->id();
             $table->string('kode');
             $table->string('nama');
+            $table->timestamps();
         });
     }
 

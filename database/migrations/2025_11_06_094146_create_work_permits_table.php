@@ -25,7 +25,9 @@ return new class extends Migration
             // Relasi ke User
             $table->foreignId('pemohon_id')->constrained('user');
             $table->foreignId('supervisor_id')->constrained('user');
-            $table->foreignId('hse_id')->constrained('user'); // User HSE yang menginisiasi
+            $table->foreignId('hse_id')
+                ->nullable()           // <-- INI YANG PALING PENTING
+                ->constrained('user'); // User HSE yang menginisiasi
 
             // Status Izin Kerja (Induk)
             // 0=Draft, 1=Pending Checklist, 2=Pending Approval, 3=Approved, 4=Rejected, 5=Closed

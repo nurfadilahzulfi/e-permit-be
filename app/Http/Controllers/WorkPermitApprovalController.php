@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+// ===== MODEL & LIBRARY YANG DIBUTUHKAN =====
 use App\Models\WorkPermit;
 use App\Models\WorkPermitApproval;
 use Carbon\Carbon;
@@ -8,106 +9,104 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class WorkPermitApprovalController extends Controller
 {
     /**
-     * [BARU] Menampilkan halaman (View) untuk list persetujuan
+     * Menampilkan halaman frontend (UI) untuk Persetujuan Izin.
      */
     public function view(): View
     {
-        // Rute ini memanggil file Blade baru di langkah 2
         return view('work-permit-approval.index');
     }
 
     /**
-     * [BARU] Mengambil data (JSON) untuk list persetujuan.
-     * Menggantikan fungsi index() dari PermitGwpApprovalController
+     * Mengembalikan data JSON dari izin yang perlu SAYA setujui.
+     */
+    /**
+     * Mengembalikan data JSON dari izin yang perlu SAYA setujui.
      */
     public function index()
     {
-        $userId = Auth::id(); // Dapatkan ID user yang sedang login
+        $userId = Auth::id();
 
-        // Cari persetujuan yang ditugaskan ke user ini dan masih pending
-        $data = WorkPermitApproval::where('approver_id', $userId)
-            ->where('status_persetujuan', 0) // 0 = Pending
-            ->whereHas('workPermit', function ($query) {
-                // Pastikan izin induknya belum ditolak atau selesai
-                // Status 1 = Pending Checklist, 2 = Pending Approval
-                $query->whereIn('status', [1, 2]);
-            })
-            ->with(['workPermit.pemohon', 'workPermit.hse']) // Ambil relasi dari Induk
+                                                         // 1. Ambil semua WorkPermit yang sedang menunggu persetujuan (Status 2)
+        $pendingPermits = WorkPermit::where('status', 2) // Status 2 = Pending Approval
+            ->with([
+                'pemohon',
+                'supervisor',
+                'hse',
+                // Muat HANYA approval yang belum selesai
+                'approvals' => function ($query) {
+                    $query->where('status_persetujuan', 0)->orderBy('urutan', 'asc');
+                },
+                'approvals.approver',
+
+                // --- [PERBAIKAN] Tambahkan relasi "anak" ---
+                'permitGwp',
+                'permitCse',
+                'permitHwp',
+                'permitEwp',
+                'permitLp',
+                // --- Selesai Perbaikan ---
+            ])
             ->get();
 
-        return response()->json(['success' => true, 'data' => $data]);
+        // 2. Filter di sisi server: Tampilkan HANYA jika SAYA adalah approver berikutnya
+        $myTasks = $pendingPermits->filter(function ($workPermit) use ($userId) {
+            if ($workPermit->approvals->isEmpty()) {
+                return false; // Seharusnya tidak terjadi
+            }
+
+            // Ambil langkah approval pertama yang statusnya '0' (Pending)
+            $nextApprovalStep = $workPermit->approvals->first();
+
+            // Cek apakah SAYA adalah approver untuk langkah tersebut
+            return $nextApprovalStep->approver_id == $userId;
+        });
+
+        // Kembalikan data yang sudah bersih
+        return response()->json(['success' => true, 'data' => $myTasks->values()]);
     }
 
     /**
-     * [BARU] Aksi untuk MENYETUJUI (Approve) izin
+     * Menyetujui sebuah langkah persetujuan
+     * $id di sini adalah ID dari 'work_permit_approval'
      */
-    public function approve(Request $request)
+    public function approve(Request $request, $id)
     {
-        $request->validate([
-            'approval_id' => 'required|integer|exists:work_permit_approvals,id',
-            'catatan'     => 'nullable|string|max:500',
-        ]);
-
-        $approvalId = $request->input('approval_id');
-        $userId     = Auth::id();
+        $request->validate(['catatan' => 'nullable|string|max:1000']);
 
         DB::beginTransaction();
         try {
-            $approval   = WorkPermitApproval::findOrFail($approvalId);
-            $workPermit = WorkPermit::findOrFail($approval->work_permit_id);
+            $approval   = WorkPermitApproval::findOrFail($id);
+            $workPermit = $approval->workPermit;
+            $userId     = Auth::id();
 
-            // 1. Pastikan user ini berhak approve
-            if ($approval->approver_id !== $userId) {
-                return response()->json(['success' => false, 'error' => 'Anda tidak berhak menyetujui izin ini.'], 403);
+            if ($approval->approver_id !== $userId || $approval->status_persetujuan != 0) {
+                return response()->json(['success' => false, 'error' => 'Aksi tidak diizinkan.'], 403);
             }
 
-            // 2. Pastikan izin masih pending (status 0)
-            if ($approval->status_persetujuan !== 0) {
-                return response()->json(['success' => false, 'error' => 'Izin ini sudah diproses.'], 422);
-            }
+            $approval->update([
+                'status_persetujuan' => 1, // 1 = Disetujui
+                'tgl_persetujuan'    => Carbon::now(),
+                'catatan'            => $request->input('catatan', 'Disetujui'),
+            ]);
 
-                                               // 3. Update status persetujuan INI
-            $approval->status_persetujuan = 1; // 1 = Approved
-            $approval->catatan            = $request->input('catatan', 'Disetujui');
-            $approval->tgl_persetujuan    = Carbon::now();
-            $approval->save();
-
-            // 4. Cek: Apakah ada persetujuan LAIN di urutan yang SAMA?
-            // (Contoh: Ada 3 HSE, baru 1 yang approve)
-            $otherPending = WorkPermitApproval::where('work_permit_id', $workPermit->id)
-                ->where('urutan', $approval->urutan)
-                ->where('status_persetujuan', 0) // Masih pending
-                ->exists();
-
-            if ($otherPending) {
-                // Jika masih ada (misal: HSE lain belum approve), biarkan status induk
-                DB::commit();
-                return response()->json(['success' => true, 'message' => 'Persetujuan Anda telah dicatat.']);
-            }
-
-            // 5. Jika TIDAK ADA, cari persetujuan BERIKUTNYA
-            $nextApproval = WorkPermitApproval::where('work_permit_id', $workPermit->id)
-                ->where('status_persetujuan', 0) // Cari yang masih pending
+            $nextStep = WorkPermitApproval::where('work_permit_id', $workPermit->id)
+                ->where('status_persetujuan', 0)
                 ->orderBy('urutan', 'asc')
                 ->first();
 
-            if ($nextApproval) {
-                                         // MASIH ADA: Update status permit ke approver selanjutnya
-                                         // Misal: dari urutan 1 (HSE) ke urutan 2 (Supervisor)
-                $workPermit->status = 2; // (Kita bisa gunakan 'status' untuk mencerminkan urutan)
-            } else {
-                                         // SELESAI: Ini adalah persetujuan terakhir
-                $workPermit->status = 3; // 3 = Approved (Final)
+            if (! $nextStep) {
+                $workPermit->update([
+                    'status' => 3, // 3 = Disetujui (Aktif)
+                ]);
             }
 
-            $workPermit->save();
-
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Izin telah disetujui.']);
+            return response()->json(['success' => true, 'message' => 'Persetujuan berhasil dicatat.']);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -116,46 +115,43 @@ class WorkPermitApprovalController extends Controller
     }
 
     /**
-     * [BARU] Aksi untuk MENOLAK (Reject) izin
+     * Menolak sebuah langkah persetujuan
+     * $id di sini adalah ID dari 'work_permit_approval'
      */
-    public function reject(Request $request)
+    public function reject(Request $request, $id)
     {
-        $request->validate([
-            'approval_id' => 'required|integer|exists:work_permit_approvals,id',
-            'catatan'     => 'required|string|min:5', // Catatan wajib diisi saat reject
-        ]);
-
-        $approvalId = $request->input('approval_id');
-        $userId     = Auth::id();
+        $request->validate(['catatan' => 'required|string|min:5|max:1000']);
 
         DB::beginTransaction();
         try {
-            $approval   = WorkPermitApproval::findOrFail($approvalId);
-            $workPermit = WorkPermit::findOrFail($approval->work_permit_id);
+            $approval   = WorkPermitApproval::findOrFail($id);
+            $workPermit = $approval->workPermit;
+            $userId     = Auth::id();
 
-            // 1. Pastikan user ini berhak
-            if ($approval->approver_id !== $userId) {
-                return response()->json(['success' => false, 'error' => 'Anda tidak berhak menolak izin ini.'], 403);
+            if ($approval->approver_id !== $userId || $approval->status_persetujuan != 0) {
+                return response()->json(['success' => false, 'error' => 'Aksi tidak diizinkan.'], 403);
             }
 
-                                               // 2. Update status persetujuan INI
-            $approval->status_persetujuan = 2; // 2 = Rejected
-            $approval->catatan            = $request->input('catatan');
-            $approval->tgl_persetujuan    = Carbon::now();
-            $approval->save();
+            $approval->update([
+                'status_persetujuan' => 2, // 2 = Ditolak
+                'tgl_persetujuan'    => Carbon::now(),
+                'catatan'            => $request->input('catatan'),
+            ]);
 
-                                     // 3. Update status permit utama (Induk)
-            $workPermit->status = 4; // 4 = Rejected (Final)
-            $workPermit->save();
+            $workPermit->update([
+                'status' => 4, // 4 = Ditolak
+            ]);
 
-            // 4. (Opsional) Batalkan semua approval lain yang pending
             WorkPermitApproval::where('work_permit_id', $workPermit->id)
                 ->where('status_persetujuan', 0)
-                ->update(['status_persetujuan' => 3]); // 3 = Cancelled
+                ->delete();
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Izin telah ditolak.']);
+            return response()->json(['success' => true, 'message' => 'Izin Kerja telah ditolak.']);
 
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);

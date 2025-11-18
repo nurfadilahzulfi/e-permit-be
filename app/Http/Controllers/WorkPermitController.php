@@ -1,21 +1,39 @@
 <?php
 namespace App\Http\Controllers;
 
-// Model-model yang kita perlukan
+// ===== DAFTAR MODEL YANG DIBUTUHKAN =====
+use App\Models\CseCek;
+use App\Models\CseCekGasLs;
+use App\Models\CseCekPersiapanLs;
+use App\Models\EwpCek;
+
+// Model Permit "Anak"
+use App\Models\EwpCekLs;
 use App\Models\GwpAlatLs;
 use App\Models\GwpCek;
-use App\Models\GwpCekHseLs;        // <-- [BARU] Pindah dari GwpController
-use App\Models\GwpCekPemohonLs;    // <-- [BARU] Pindah dari GwpController
-use App\Models\PermitCse;          // <-- [BARU] Pindah dari GwpController
-use App\Models\PermitGwp;          // <-- [BARU] Pindah dari GwpController
-use App\Models\PermitType;         // <-- [BARU]
+use App\Models\GwpCekHseLs;
+use App\Models\GwpCekPemohonLs;
+
+// Model Checklist "Jawaban"
+use App\Models\HwpCek;
+use App\Models\HwpCekLs;
+use App\Models\LpCek;     // <-- [BARU]
+use App\Models\LpCekLs;   // <-- [BARU]
+use App\Models\PermitCse; // <-- [BARU]
+
+// Model Checklist "Master Pertanyaan"
+use App\Models\PermitEwp;
+use App\Models\PermitGwp;
+use App\Models\PermitHwp;
+use App\Models\PermitLp;
+use App\Models\PermitType;
 use App\Models\User;               // <-- [BARU]
 use App\Models\WorkPermit;         // <-- [BARU]
 use App\Models\WorkPermitApproval; // <-- [BARU]
 
-// Library lain
+// ===== LIBRARY =====
 use Carbon\Carbon;
-use Illuminate\Contracts\View\View; // <-- [BARU] Untuk return Halaman
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -24,124 +42,151 @@ use Illuminate\Validation\ValidationException;
 class WorkPermitController extends Controller
 {
     // ==============================================
-    // (HSE) HALAMAN INISIASI IZIN KERJA
+    // (HSE) HALAMAN TINJAUAN PEKERJAAN (Langkah 3)
     // ==============================================
 
     /**
-     * [LANGKAH 2] Menampilkan halaman (View) form inisiasi izin untuk HSE.
+     * Menampilkan halaman View 'work-permit/index.blade.php'
      */
-    public function view(): View
+    public function viewHseReview(): View
     {
         return view('work-permit.index');
     }
 
     /**
-     * [TETAP] FUNGSI UTAMA BARU: Inisiasi Izin Kerja oleh HSE
-     * (Sesuai Langkah 3 Flow Anda)
+     * Memberi data JSON list pekerjaan (status 10) untuk HSE.
      */
-    public function store(Request $request)
+    public function indexHseReview()
+    {
+                                                // Ambil pekerjaan yang baru diajukan pemohon (Status 10)
+        $data = WorkPermit::where('status', 10) // 10 = Pending HSE Review
+            ->with(['pemohon', 'supervisor'])       // Ambil relasi
+            ->latest()                              // Tampilkan yang terbaru
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    /**
+     * [FLOWCHART LANGKAH 3]
+     * Dipanggil HSE setelah mengisi JSA & memilih permit di modal.
+     */
+    public function reviewAndAssign(Request $request, $id)
     {
         DB::beginTransaction();
         try {
-            // 1. Validasi data utama (diisi HSE)
+            // 1. Cari Izin Kerja (status 10) yang dikirim Pemohon
+            $workPermit = WorkPermit::where('status', 10)->findOrFail($id);
+            $now        = Carbon::now();
+            $userHse    = Auth::user();
+
+            // 2. Validasi data dari HSE (JSA, Permits, dll)
             $validated = $request->validate([
-                'pemohon_id'            => 'required|integer|exists:user,id',
-                'supervisor_id'         => 'required|integer|exists:user,id',
-                'deskripsi_pekerjaan'   => 'required|string',
-                'langkah_pekerjaan'     => 'required|string|min:10',
-                'potensi_bahaya'        => 'required|string|min:10',
-                'pengendalian_risiko'   => 'required|string|min:10',
-                'lokasi'                => 'required|string|max:255',
-                'shift_kerja'           => 'required|string|max:20',
-                'tgl_pekerjaan_dimulai' => 'required|date',
-                'tgl_pekerjaan_selesai' => 'required|date|after_or_equal:tgl_pekerjaan_dimulai',
-                'permits_required'      => 'required|array|min:1',
-                'permits_required.*'    => 'string|in:GWP,CSE,HWP,JSA,ELP,EWP,WhHP',
-                'peralatan_pekerjaan'   => 'nullable|string|required_if:permits_required.*,GWP',
-                'gas_tester_name'       => 'nullable|string|required_if:permits_required.*,CSE',
-                'entry_supervisor_name' => 'nullable|string|required_if:permits_required.*,CSE',
+                'langkah_pekerjaan'      => 'required|string|min:10',
+                'potensi_bahaya'         => 'required|string|min:10',
+                'pengendalian_risiko'    => 'required|string|min:10',
+                'shift_kerja'            => 'required|string|max:20',
+                'tgl_pekerjaan_selesai'  => 'required|date|after_or_equal:' . $workPermit->tgl_pekerjaan_dimulai,
+
+                'permits_required'       => 'required|array|min:1',
+                'permits_required.*'     => 'string|in:GWP,CSE,HWP,EWP,LP', // Sesuaikan dengan 'kode' di tabel permit_types
+
+                // Validasi kondisional (muncul jika permit dipilih)
+                'peralatan_pekerjaan'    => 'nullable|string|required_if:permits_required.*,GWP|max:500',
+                'gas_tester_name'        => 'nullable|string|required_if:permits_required.*,CSE|max:100',
+                'entry_supervisor_name'  => 'nullable|string|required_if:permits_required.*,CSE|max:100',
+                'equipment_tools'        => 'nullable|string|required_if:permits_required.*,HWP|max:500',
+                'kedalaman_galian_meter' => 'nullable|string|required_if:permits_required.*,EWP|max:100',
+                'crane_capacity'         => 'nullable|string|required_if:permits_required.*,LP|max:100',
+                'load_weight'            => 'nullable|string|required_if:permits_required.*,LP|max:100',
             ]);
 
-            $now    = Carbon::now();
-            $hse_id = Auth::id(); // HSE yang sedang login
-
-            // 2. Buat Nomor Pekerjaan
-            $bulan          = $now->format('m');
-            $tahun          = $now->format('Y');
-            $countThisMonth = WorkPermit::whereYear('created_at', $tahun)->whereMonth('created_at', $bulan)->count();
-            $nomorPekerjaan = "WP-{$tahun}-{$bulan}-" . str_pad($countThisMonth + 1, 4, '0', STR_PAD_LEFT);
-
-            // 3. Buat "Induk" Izin Kerja (WorkPermit)
-            $workPermit = WorkPermit::create([
-                'nomor_pekerjaan'       => $nomorPekerjaan,
-                'deskripsi_pekerjaan'   => $validated['deskripsi_pekerjaan'],
+            // 3. UPDATE Izin Kerja "Induk" dengan data JSA & info dari HSE
+            $workPermit->update([
                 'langkah_pekerjaan'     => $validated['langkah_pekerjaan'],
                 'potensi_bahaya'        => $validated['potensi_bahaya'],
                 'pengendalian_risiko'   => $validated['pengendalian_risiko'],
-                'lokasi'                => $validated['lokasi'],
                 'shift_kerja'           => $validated['shift_kerja'],
-                'pemohon_id'            => $validated['pemohon_id'],
-                'supervisor_id'         => $validated['supervisor_id'],
-                'hse_id'                => $hse_id,
-                'status'                => 1, // 1 = Pending (Menunggu Pemohon isi checklist)
-                'tgl_pekerjaan_dimulai' => $validated['tgl_pekerjaan_dimulai'],
                 'tgl_pekerjaan_selesai' => $validated['tgl_pekerjaan_selesai'],
+                'hse_id'                => $userHse->id, // [PENTING] Tetapkan HSE yang bertanggung jawab
+                'status'                => 1,            // [PENTING] Ubah status ke 1 (Pending Checklist Pemohon)
             ]);
 
             // 4. Buat "Anak" Sub-Permit (Looping)
             foreach ($validated['permits_required'] as $kodePermit) {
-
                 $permitType = PermitType::where('kode', $kodePermit)->first();
                 if (! $permitType) {
                     continue;
                 }
+                // Lewati jika kode tidak ditemukan
 
-                if ($kodePermit === 'GWP') {
-                    $permitGwp = PermitGwp::create([
-                        'work_permit_id'      => $workPermit->id,
-                        'permit_type_id'      => $permitType->id,
-                        'permit_type_kode'    => $kodePermit,
-                        'peralatan_pekerjaan' => $validated['peralatan_pekerjaan'],
-                    ]);
+                $dataAnak = [
+                    'work_permit_id'   => $workPermit->id,
+                    'permit_type_id'   => $permitType->id,
+                    'permit_type_kode' => $kodePermit,
+                    'created_at'       => $now,
+                    'updated_at'       => $now,
+                ];
 
-                    // [BARU] Langsung buat checklist kosong untuk GWP
-                    $this->createEmptyChecklists($permitGwp->id, $now);
+                switch ($kodePermit) {
+                    case 'GWP':
+                        $permitGwp = PermitGwp::create(array_merge($dataAnak, [
+                            'peralatan_pekerjaan' => $validated['peralatan_pekerjaan'],
+                        ]));
+                        $this->createEmptyGwpChecklists($permitGwp->id, $now);
+                        break;
+
+                    case 'CSE':
+                        $permitCse = PermitCse::create(array_merge($dataAnak, [
+                            'gas_tester_name'       => $validated['gas_tester_name'],
+                            'entry_supervisor_name' => $validated['entry_supervisor_name'],
+                        ]));
+                        $this->createEmptyCseChecklists($permitCse->id, $now);
+                        break;
+
+                    case 'HWP': // <-- [BARU]
+                        $permitHwp = PermitHwp::create(array_merge($dataAnak, [
+                            'equipment_tools' => $validated['equipment_tools'] ?? null,
+                        ]));
+                        $this->createEmptyHwpChecklists($permitHwp->id, $now); // <-- [BARU]
+                        break;
+
+                    case 'EWP': // <-- [BARU]
+                        $permitEwp = PermitEwp::create(array_merge($dataAnak, [
+                            'kedalaman_galian_meter' => $validated['kedalaman_galian_meter'] ?? null,
+                        ]));
+                        $this->createEmptyEwpChecklists($permitEwp->id, $now); // <-- [BARU]
+                        break;
+
+                    case 'LP': // <-- [BARU]
+                        $permitLp = PermitLp::create(array_merge($dataAnak, [
+                            'crane_capacity' => $validated['crane_capacity'],
+                            'load_weight'    => $validated['load_weight'],
+                            // (Tambahkan field LP lain)
+                        ]));
+                        $this->createEmptyLpChecklists($permitLp->id, $now); // <-- [BARU]
+                        break;
                 }
-                // [BARU] Logika untuk CSE
-                if ($kodePermit === 'CSE') {
-                    $permitCse = PermitCse::create([
-                        'work_permit_id'        => $workPermit->id,
-                        'permit_type_id'        => $permitType->id,
-                        'permit_type_kode'      => $kodePermit,
-                        'gas_tester_name'       => $validated['gas_tester_name'],
-                        'entry_supervisor_name' => $validated['entry_supervisor_name'],
-                    ]);
-                    // [BARU] Panggil helper baru
-                    $this->createEmptyCseChecklists($permitCse->id, Carbon::now());
-                }
-
-                // (NANTI)
-                // if ($kodePermit === 'CSE') { ... }
             }
 
             // 5. Buat Alur Persetujuan (HSE -> Supervisor)
             WorkPermitApproval::create([
                 'work_permit_id'     => $workPermit->id,
-                'approver_id'        => $hse_id,
+                'approver_id'        => $userHse->id, // HSE yang me-review
                 'role_persetujuan'   => 'hse',
                 'urutan'             => 1,
                 'status_persetujuan' => 0, // Pending
             ]);
             WorkPermitApproval::create([
                 'work_permit_id'     => $workPermit->id,
-                'approver_id'        => $validated['supervisor_id'],
+                'approver_id'        => $workPermit->supervisor_id, // Supervisor dari Pemohon
                 'role_persetujuan'   => 'supervisor',
                 'urutan'             => 2,
                 'status_persetujuan' => 0, // Pending
             ]);
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Izin Kerja berhasil dibuat.', 'data' => $workPermit], 201);
+            return response()->json(['success' => true, 'message' => 'Izin Kerja berhasil ditinjau dan dikirim ke Pemohon.', 'data' => $workPermit], 200);
 
         } catch (ValidationException $e) {
             DB::rollBack();
@@ -153,11 +198,11 @@ class WorkPermitController extends Controller
     }
 
     // ==============================================
-    // (PEMOHON) HALAMAN LIST TUGAS SAYA
+    // (PEMOHON) HALAMAN LIST TUGAS SAYA (Langkah 2 & 4)
     // ==============================================
 
     /**
-     * [LANGKAH 3] Menampilkan halaman (View) list tugas untuk Pemohon.
+     * Menampilkan halaman View "Tugas Izin Saya" (my-permits/index.blade.php)
      */
     public function viewMyPermits(): View
     {
@@ -165,81 +210,88 @@ class WorkPermitController extends Controller
     }
 
     /**
-     * [LANGKAH 3] Memberi data JSON list tugas untuk Pemohon.
+     * [FIXED] Memberi data JSON list pekerjaan untuk Pemohon/HSE/SPV
+     * Query dibuat ringan (tanpa 'permitGwp', 'permitCse', 'approvals')
      */
     public function index()
     {
-        $user  = Auth::user();
-        $query = WorkPermit::with(['supervisor', 'hse', 'permitGwp']); // Ambil relasi
+        $user = Auth::user();
+
+        $query = WorkPermit::with([
+            'pemohon',
+            'supervisor',
+        ]);
 
         if ($user->role === 'pemohon') {
             $query->where('pemohon_id', $user->id);
+        } else if ($user->role === 'hse') {
+            $query->where('hse_id', $user->id);
+            $query->with('hse');
+        } else if ($user->role === 'supervisor') {
+            $query->where('supervisor_id', $user->id);
         }
-        // (Bisa ditambahkan role lain jika perlu lihat semua)
 
         $data = $query->latest()->get();
+
+        // [PERBAIKAN] Muat relasi "anak" HANYA JIKA diperlukan (status == 1)
+        $data->each(function ($permit) {
+            if ($permit->status == 1) {
+                // 'permitGwp', 'permitCse', 'permitHwp', 'permitEwp', 'permitLp'
+                // adalah nama relasi di WorkPermit.php
+                $permit->load('permitGwp', 'permitCse', 'permitHwp', 'permitEwp', 'permitLp');
+            }
+        });
+
         return response()->json(['success' => true, 'data' => $data]);
     }
 
-    // ==============================================
-    // (PRIVATE) FUNGSI HELPER
-    // ==============================================
-
     /**
-     * [BARU] Fungsi ini dipindah dari PermitGwpController
-     * Membuat checklist GWP kosong
+     * [FLOWCHART LANGKAH 2]
+     * Fungsi untuk Pemohon mengajukan pekerjaan (form simpel)
      */
-    private function createEmptyChecklists($permit_gwp_id, $now)
+    public function requestJob(Request $request)
     {
-        $dataToInsert = [];
+        DB::beginTransaction();
+        try {
+            $validated = $request->validate([
+                'supervisor_id'         => 'required|integer|exists:user,id',
+                'lokasi'                => 'required|string|max:255',
+                'deskripsi_pekerjaan'   => 'required|string',
+                'tgl_pekerjaan_dimulai' => 'required|date|after_or_equal:today',
+            ]);
 
-        // 1. Ambil semua master checklist Pemohon
-        $pemohonLs = GwpCekPemohonLs::all();
-        foreach ($pemohonLs as $item) {
-            $dataToInsert[] = [
-                'permit_gwp_id' => $permit_gwp_id,
-                'model'         => GwpCekPemohonLs::class,
-                'ls_id'         => $item->id,
-                'value'         => false,
-                'created_at'    => $now,
-                'updated_at'    => $now,
-            ];
-        }
+            $workPermit = WorkPermit::create([
+                'deskripsi_pekerjaan'   => $validated['deskripsi_pekerjaan'],
+                'lokasi'                => $validated['lokasi'],
+                'supervisor_id'         => $validated['supervisor_id'],
+                'tgl_pekerjaan_dimulai' => $validated['tgl_pekerjaan_dimulai'],
+                'nomor_pekerjaan'       => $this->generateNomorPekerjaan(),
+                'pemohon_id'            => Auth::id(),
+                'status'                => 10,   // 10 = Pending HSE Review
+                'hse_id'                => null, // [PENTING] Dibiarkan NULL
+                'shift_kerja'           => 'Belum Ditentukan',
+                'tgl_pekerjaan_selesai' => $validated['tgl_pekerjaan_dimulai'], // Default
+            ]);
 
-        // 2. Ambil semua master checklist HSE
-        $hseLs = GwpCekHseLs::all();
-        foreach ($hseLs as $item) {
-            $dataToInsert[] = [
-                'permit_gwp_id' => $permit_gwp_id,
-                'model'         => GwpCekHseLs::class,
-                'ls_id'         => $item->id,
-                'value'         => false,
-                'created_at'    => $now,
-                'updated_at'    => $now,
-            ];
-        }
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Pengajuan pekerjaan berhasil dikirim. Menunggu peninjauan HSE.', 'data' => $workPermit], 201);
 
-        // 3. Ambil semua master checklist Alat
-        $alatLs = GwpAlatLs::all();
-        foreach ($alatLs as $item) {
-            $dataToInsert[] = [
-                'permit_gwp_id' => $permit_gwp_id,
-                'model'         => GwpAlatLs::class,
-                'ls_id'         => $item->id,
-                'value'         => false,
-                'created_at'    => $now,
-                'updated_at'    => $now,
-            ];
-        }
-
-        // Insert semua data sekaligus
-        if (! empty($dataToInsert)) {
-            GwpCek::insert($dataToInsert);
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
+
+    // ==============================================
+    // FUNGSI HELPER (Checklist, Approval, dll)
+    // ==============================================
+
     /**
-     * [BARU] Mengubah status Izin Kerja menjadi "Pending Approval".
-     * Ini dipanggil oleh Pemohon setelah selesai mengisi checklist.
+     * [FLOWCHART LANGKAH 4]
+     * Dipanggil Pemohon saat klik "Kirim Persetujuan" (setelah isi checklist)
      */
     public function submitForApproval(Request $request, $id)
     {
@@ -247,33 +299,123 @@ class WorkPermitController extends Controller
         try {
             $workPermit = WorkPermit::findOrFail($id);
 
-            // 1. Otorisasi: Pastikan user adalah pemohon yang ditugaskan
-            if (Auth::id() !== $workPermit->pemohon_id) {
-                return response()->json(['success' => false, 'error' => 'Anda tidak berhak melakukan aksi ini.'], 403);
+            if (Auth::id() !== $workPermit->pemohon_id || $workPermit->status !== 1) {
+                return response()->json(['success' => false, 'error' => 'Aksi tidak diizinkan.'], 403);
             }
 
-            // 2. Validasi Status: Pastikan status masih "Pending Checklist"
-            if ($workPermit->status !== 1) {
-                return response()->json(['success' => false, 'error' => 'Izin ini sudah dikirim atau tidak lagi valid.'], 422);
-            }
-
-            // 3. (Opsional) Validasi Checklist: Pastikan semua checklist pemohon terisi
-            // ... (Logika ini bisa ditambahkan nanti jika diperlukan) ...
-
-                                     // 4. Ubah Status Induk
-            $workPermit->status = 2; // 2 = Pending Approval
+            $workPermit->status = 2; // 2 = Pending Approval (HSE)
             $workPermit->save();
 
             DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Checklist berhasil dikirim dan sedang menunggu persetujuan HSE.',
-            ]);
+            return response()->json(['success' => true, 'message' => 'Checklist berhasil dikirim untuk persetujuan HSE.']);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Helper untuk membuat Nomor Pekerjaan Unik
+     */
+    private function generateNomorPekerjaan()
+    {
+        $date  = Carbon::now()->format('Ymd');
+        $count = WorkPermit::whereDate('created_at', Carbon::today())->count() + 1;
+        return "WP-{$date}-" . str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Helper untuk membuat baris kosong checklist GWP
+     */
+    private function createEmptyGwpChecklists($permit_gwp_id, $now)
+    {
+        $dataToInsert = [];
+
+        $pemohonLs = GwpCekPemohonLs::all();
+        foreach ($pemohonLs as $item) {
+            $dataToInsert[] = ['permit_gwp_id' => $permit_gwp_id, 'model' => GwpCekPemohonLs::class, 'ls_id' => $item->id, 'value' => false, 'created_at' => $now, 'updated_at' => $now];
+        }
+
+        $hseLs = GwpCekHseLs::all();
+        foreach ($hseLs as $item) {
+            $dataToInsert[] = ['permit_gwp_id' => $permit_gwp_id, 'model' => GwpCekHseLs::class, 'ls_id' => $item->id, 'value' => false, 'created_at' => $now, 'updated_at' => $now];
+        }
+
+        $alatLs = GwpAlatLs::all();
+        foreach ($alatLs as $item) {
+            $dataToInsert[] = ['permit_gwp_id' => $permit_gwp_id, 'model' => GwpAlatLs::class, 'ls_id' => $item->id, 'value' => false, 'created_at' => $now, 'updated_at' => $now];
+        }
+
+        if (! empty($dataToInsert)) {
+            GwpCek::insert($dataToInsert);
+        }
+    }
+
+    /**
+     * Helper untuk membuat baris kosong checklist CSE
+     */
+    private function createEmptyCseChecklists($permit_cse_id, $now)
+    {
+        $dataToInsert = [];
+
+        $persiapanLs = CseCekPersiapanLs::all();
+        foreach ($persiapanLs as $item) {
+            $dataToInsert[] = ['permit_cse_id' => $permit_cse_id, 'model' => CseCekPersiapanLs::class, 'ls_id' => $item->id, 'value' => false, 'created_at' => $now, 'updated_at' => $now];
+        }
+
+        $gasLs = CseCekGasLs::all();
+        foreach ($gasLs as $item) {
+            $dataToInsert[] = ['permit_cse_id' => $permit_cse_id, 'model' => CseCekGasLs::class, 'ls_id' => $item->id, 'value' => false, 'created_at' => $now, 'updated_at' => $now];
+        }
+
+        if (! empty($dataToInsert)) {
+            CseCek::insert($dataToInsert);
+        }
+    }
+
+    /**
+     * [BARU - IMPLEMENTASI] Helper untuk checklist HWP
+     */
+    private function createEmptyHwpChecklists($permit_hwp_id, $now)
+    {
+        $dataToInsert = [];
+        $items        = HwpCekLs::all();
+        foreach ($items as $item) {
+            $dataToInsert[] = ['permit_hwp_id' => $permit_hwp_id, 'model' => HwpCekLs::class, 'ls_id' => $item->id, 'value' => false, 'created_at' => $now, 'updated_at' => $now];
+        }
+        if (! empty($dataToInsert)) {
+            HwpCek::insert($dataToInsert);
+        }
+    }
+
+    /**
+     * [BARU - IMPLEMENTASI] Helper untuk checklist EWP
+     */
+    private function createEmptyEwpChecklists($permit_ewp_id, $now)
+    {
+        $dataToInsert = [];
+        $items        = EwpCekLs::all();
+        foreach ($items as $item) {
+            $dataToInsert[] = ['permit_ewp_id' => $permit_ewp_id, 'model' => EwpCekLs::class, 'ls_id' => $item->id, 'value' => false, 'created_at' => $now, 'updated_at' => $now];
+        }
+        if (! empty($dataToInsert)) {
+            EwpCek::insert($dataToInsert);
+        }
+    }
+
+    /**
+     * [BARU - IMPLEMENTASI] Helper untuk checklist LP
+     */
+    private function createEmptyLpChecklists($permit_lp_id, $now)
+    {
+        $dataToInsert = [];
+        $items        = LpCekLs::all();
+        foreach ($items as $item) {
+            $dataToInsert[] = ['permit_lp_id' => $permit_lp_id, 'model' => LpCekLs::class, 'ls_id' => $item->id, 'value' => false, 'created_at' => $now, 'updated_at' => $now];
+        }
+        if (! empty($dataToInsert)) {
+            LpCek::insert($dataToInsert);
         }
     }
 }

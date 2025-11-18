@@ -1,24 +1,25 @@
 <?php
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class WorkPermitCompletion extends Model
 {
+    use HasFactory;
+
     protected $table = 'work_permit_completions';
 
     protected $fillable = [
         'work_permit_id',
         'user_id',
         'role_penutupan',
-        'urutan',
-        'status_penutupan',
         'tgl_penutupan',
         'catatan',
     ];
 
     /**
-     * Relasi ke Izin Kerja "Induk"
+     * Relasi kembali ke Izin Kerja Induk.
      */
     public function workPermit()
     {
@@ -26,7 +27,7 @@ class WorkPermitCompletion extends Model
     }
 
     /**
-     * Relasi ke User yang menandatangani
+     * Relasi ke User yang menandatangani.
      */
     public function user()
     {

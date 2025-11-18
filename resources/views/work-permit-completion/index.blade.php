@@ -96,11 +96,17 @@
 
 @endsection
 
+{{-- ========================================================== --}}
+{{-- [PERBAIKAN] Seluruh blok <script> di bawah ini diperbarui --}}
+{{-- ========================================================== --}}
 @push('scripts')
 <script>
-    // [BARU] URL API
+    // [BENAR] URL API
     const API_URL = "{{ route('work-permit-completion.index') }}";
     const SIGN_URL = "{{ route('work-permit-completion.sign') }}";
+    
+    // [BARU] Ambil role user yang sedang login dari backend
+    const MY_ROLE = "{{ Auth::user()->role }}"; 
     
     // Elemen Global
     const toastContainer = document.getElementById('toast-container');
@@ -128,10 +134,25 @@
         }, 5000);
     };
 
+    /**
+     * [BARU] Helper untuk mendapatkan info tahap penutupan
+     */
+    function getCompletionStepInfo(status) {
+        switch (Number(status)) {
+            case 5: return { text: 'Tahap: Pemohon', role: 'pemohon', color: 'bg-blue-200 text-blue-800' };
+            case 6: return { text: 'Tahap: HSE', role: 'hse', color: 'bg-blue-200 text-blue-800' };
+            case 7: return { text: 'Tahap: Supervisor', role: 'supervisor', color: 'bg-blue-200 text-blue-800' };
+            default: return { text: 'Unknown', role: '', color: 'bg-slate-200 text-slate-700' };
+        }
+    }
+
     // ===========================================
     // FUNGSI UTAMA (CRUD & ACTIONS)
     // ===========================================
 
+    /**
+     * [PERBAIKAN] Memuat daftar izin yang menunggu penutupan
+     */
     async function loadTasks() {
         loadingRow.classList.remove('hidden');
         tableBody.querySelectorAll('tr:not(#loading-row)').forEach(row => row.remove());
@@ -149,29 +170,37 @@
                 return;
             }
 
-            result.data.forEach(item => {
+            result.data.forEach(permit => {
+                // [PERBAIKAN] 'permit' adalah data WorkPermit (Induk)
                 const row = taskRowTemplate.content.cloneNode(true);
                 const newRow = row.querySelector('tr');
                 
-                newRow.dataset.id = item.completion_id; // ID untuk aksi 'sign'
+                // [PERBAIKAN] 'dataset.id' harus ID dari WorkPermit
+                newRow.dataset.id = permit.id; 
                 
                 // Isi data ke kolom
-                row.querySelector('[data-field="nomor_pekerjaan"]').textContent = item.nomor_pekerjaan;
-                row.querySelector('[data-field="deskripsi_pekerjaan"]').textContent = item.deskripsi_pekerjaan;
-                row.querySelector('[data-field="deskripsi_pekerjaan"]').title = item.deskripsi_pekerjaan;
-                row.querySelector('[data-field="lokasi_pekerjaan"]').textContent = item.lokasi;
-                row.querySelector('[data-field="nama_pemohon"]').textContent = item.pemohon;
+                row.querySelector('[data-field="nomor_pekerjaan"]').textContent = permit.nomor_pekerjaan;
+                row.querySelector('[data-field="deskripsi_pekerjaan"]').textContent = permit.deskripsi_pekerjaan;
+                row.querySelector('[data-field="deskripsi_pekerjaan"]').title = permit.deskripsi_pekerjaan;
+                row.querySelector('[data-field="lokasi_pekerjaan"]').textContent = permit.lokasi;
                 
-                // Tahap Badge
+                // [PERBAIKAN] Ambil nama dari relasi 'pemohon'
+                row.querySelector('[data-field="nama_pemohon"]').textContent = permit.pemohon ? permit.pemohon.nama : 'N/A';
+                
+                // [PERBAIKAN] Logika Tahap Badge
+                const { text, role, color } = getCompletionStepInfo(permit.status);
+                const isMyTurn = (MY_ROLE === role); // Cek apakah ini giliran user
+                
                 const tahapBadge = row.querySelector('[data-field="tahap_badge"]');
-                tahapBadge.textContent = `Tahap: ${item.role_penutupan.toUpperCase()}`;
-                tahapBadge.className = `px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${item.is_my_turn ? 'bg-blue-200 text-blue-800' : 'bg-slate-200 text-slate-700'}`;
+                tahapBadge.textContent = text;
+                tahapBadge.className = `px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${color} ${isMyTurn ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`;
 
-                // Tombol Aksi
+                // [PERBAIKAN] Logika Tombol Aksi
                 const signButton = row.querySelector('[data-action="sign"]');
-                if (item.is_my_turn) {
+                if (isMyTurn) {
                     signButton.disabled = false;
-                    signButton.addEventListener('click', () => handleSign(item.completion_id));
+                    // [PERBAIKAN] Kirim ID WorkPermit
+                    signButton.addEventListener('click', () => handleSign(permit.id));
                 } else {
                     signButton.textContent = 'Menunggu';
                     signButton.classList.add('bg-slate-400', 'cursor-not-allowed');
@@ -189,12 +218,11 @@
     }
 
     /**
-     * Aksi: Menandatangani Pengesahan Selesai
+     * [PERBAIKAN] Aksi: Menandatangani Pengesahan Selesai
      */
-    async function handleSign(completionId) {
+    async function handleSign(workPermitId) { // <-- Menerima work_permit_id
         const catatan = prompt('Tambahkan catatan (opsional):');
         
-        // (User bisa klik Batal, tapi catatan tidak wajib)
         if (catatan === null) { // Jika user klik "Batal"
             return;
         }
@@ -208,13 +236,21 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 body: JSON.stringify({
-                    completion_id: completionId,
-                    catatan: catatan
+                    // [PERBAIKAN] Kirim 'work_permit_id'
+                    'work_permit_id': workPermitId, 
+                    'catatan': catatan
                 })
             });
 
             const result = await response.json();
-            if (!result.success) throw new Error(result.error || result.message);
+            if (!result.success) {
+                // Tangani error validasi (jika ada)
+                if (response.status === 422 && result.errors) {
+                    const errorMsg = Object.values(result.errors).map(e => e[0]).join(' ');
+                    throw new Error(errorMsg);
+                }
+                throw new Error(result.error || result.message);
+            }
 
             showToast(result.message, 'success');
             loadTasks(); // Muat ulang daftar

@@ -1,84 +1,150 @@
 <?php
 
-use App\Http\Controllers\GwpAlatLsController;
+use App\Http\Controllers\CseCekController;
+use App\Http\Controllers\EwpCekController;
+
+// ===== IMPORT SEMUA CONTROLLER =====
+
+// Auth & User
+use App\Http\Controllers\EwpCekLsController;
+use App\Http\Controllers\GwpAlatLsController; // (Opsional jika API perlu ini)
+
+// Alur Kerja Utama
 use App\Http\Controllers\GwpCekController;
-
-// Import semua controller
-
 use App\Http\Controllers\GwpCekHseLsController;
 use App\Http\Controllers\GwpCekPemohonLsController;
-use App\Http\Controllers\PermitGwpApprovalController;
-use App\Http\Controllers\PermitGwpCompletionController;
-use App\Http\Controllers\PermitTypeController;
-use App\Http\Controllers\UserController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 
-// Autentikasi user via Sanctum
+// Master Data (Admin)
+use App\Http\Controllers\HwpCekController;
+use App\Http\Controllers\HwpCekLsController;
+use App\Http\Controllers\LpCekController;
+use App\Http\Controllers\LpCekLsController;
+use App\Http\Controllers\PermitTypeController; // [BARU]
+use App\Http\Controllers\ProfileController;    // [BARU]
+use App\Http\Controllers\UserController;       // [BARU]
+
+// Pengisian Checklist (User)
+use App\Http\Controllers\WorkPermitApprovalController;
+use App\Http\Controllers\WorkPermitCompletionController;
+use App\Http\Controllers\WorkPermitController; // [BARU]
+use Illuminate\Http\Request;                   // [BARU]
+use Illuminate\Support\Facades\Route;
+// [BARU]
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
+
+// Rute default Sanctum
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::prefix('user')->group(function () {
-    Route::get('/', [UserController::class, 'index']);
-    Route::get('/{id}', [UserController::class, 'show']);
-    Route::post('/', [UserController::class, 'store']);
-    Route::put('/{id}', [UserController::class, 'update']);
-    Route::delete('/{id}', [UserController::class, 'destroy']);
-});
+// ==========================================================
+// SEMUA RUTE API LAINNYA HARUS DIAUTENTIKASI DENGAN SANCTUM
+// ==========================================================
+Route::middleware('auth:sanctum')->group(function () {
 
-Route::prefix('permit-types')->group(function () {
-    Route::get('/', [PermitTypeController::class, 'index']);
-    Route::get('/{id}', [PermitTypeController::class, 'show']);
-    Route::post('/', [PermitTypeController::class, 'store']);
-    Route::put('/{id}', [PermitTypeController::class, 'update']);
-    Route::delete('/{id}', [PermitTypeController::class, 'destroy']);
-});
+    // --- Master User & Tipe Permit ---
+    Route::apiResource('user', UserController::class);
+    Route::apiResource('permit-types', PermitTypeController::class);
 
-Route::prefix('gwp-cek-pemohon-ls')->group(function () {
-    Route::get('/', [GwpCekPemohonLsController::class, 'index']);
-    Route::get('/{id}', [GwpCekPemohonLsController::class, 'show']);
-    Route::post('/', [GwpCekPemohonLsController::class, 'store']);
-    Route::put('/{id}', [GwpCekPemohonLsController::class, 'update']);
-    Route::delete('/{id}', [GwpCekPemohonLsController::class, 'destroy']);
-});
+    // --- Master Checklist (GWP) ---
+    Route::apiResource('master/gwp-pemohon-ls', GwpCekPemohonLsController::class);
+    Route::apiResource('master/gwp-hse-ls', GwpCekHseLsController::class);
+    Route::apiResource('master/gwp-alat-ls', GwpAlatLsController::class);
 
-Route::prefix('gwp-cek-hse-ls')->group(function () {
-    Route::get('/', [GwpCekHseLsController::class, 'index']);
-    Route::get('/{id}', [GwpCekHseLsController::class, 'show']);
-    Route::post('/', [GwpCekHseLsController::class, 'store']);
-    Route::put('/{id}', [GwpCekHseLsController::class, 'update']);
-    Route::delete('/{id}', [GwpCekHseLsController::class, 'destroy']);
-});
+    // --- [BARU] Master Checklist (HWP, EWP, LP) ---
+    Route::apiResource('master/hwp-ls', HwpCekLsController::class);
+    Route::apiResource('master/ewp-ls', EwpCekLsController::class);
+    Route::apiResource('master/lp-ls', LpCekLsController::class);
 
-Route::prefix('gwp-alat-ls')->group(function () {
-    Route::get('/', [GwpAlatLsController::class, 'index']);
-    Route::get('/{id}', [GwpAlatLsController::class, 'show']);
-    Route::post('/', [GwpAlatLsController::class, 'store']);
-    Route::put('/{id}', [GwpAlatLsController::class, 'update']);
-    Route::delete('/{id}', [GwpAlatLsController::class, 'destroy']);
-});
+    // ===========================================
+    // ALUR KERJA IZIN UTAMA (WORK PERMIT)
+    // ===========================================
+    Route::prefix('work-permits')->group(function () {
+        // [BARU] (HSE) Mengambil daftar izin (Status 10) untuk di-review
+        Route::get('/review-list', [WorkPermitController::class, 'indexHseReview']);
 
-Route::prefix('gwp-cek')->group(function () {
-    Route::get('/', [GwpCekController::class, 'index']);
-    Route::get('/{id}', [GwpCekController::class, 'show']);
-    Route::post('/', [GwpCekController::class, 'store']);
-    Route::put('/{id}', [GwpCekController::class, 'update']);
-    Route::delete('/{id}', [GwpCekController::class, 'destroy']);
-});
+        // [BARU] (HSE) Menyimpan hasil review (Langkah 3)
+        Route::post('/{id}/review-assign', [WorkPermitController::class, 'reviewAndAssign']);
 
-Route::prefix('permit-gwp-approval')->group(function () {
-    Route::get('/', [PermitGwpApprovalController::class, 'index']);
-    Route::get('/{id}', [PermitGwpApprovalController::class, 'show']);
-    Route::post('/', [PermitGwpApprovalController::class, 'store']);
-    Route::put('/{id}', [PermitGwpApprovalController::class, 'update']);
-    Route::delete('/{id}', [PermitGwpApprovalController::class, 'destroy']);
-});
+        // [BARU] (PEMOHON/SPV/HSE) Mengambil daftar tugas (Status 1, 2, 3, dll)
+        Route::get('/', [WorkPermitController::class, 'index']);
 
-Route::prefix('permit-gwp-completion')->group(function () {
-    Route::get('/', [PermitGwpCompletionController::class, 'index']);
-    Route::get('/{id}', [PermitGwpCompletionController::class, 'show']);
-    Route::post('/', [PermitGwpCompletionController::class, 'store']);
-    Route::put('/{id}', [PermitGwpCompletionController::class, 'update']);
-    Route::delete('/{id}', [PermitGwpCompletionController::class, 'destroy']);
+        // [BARU] (PEMOHON) Mengajukan izin baru (Langkah 2)
+        Route::post('/request-job', [WorkPermitController::class, 'requestJob']);
+
+        // [BARU] (PEMOHON) Mengirim checklist untuk approval (Langkah 4)
+        Route::post('/{id}/submit-approval', [WorkPermitController::class, 'submitForApproval']);
+    });
+
+    // ===========================================
+    // ALUR PERSETUJUAN (APPROVAL) [BARU]
+    // ===========================================
+    Route::prefix('work-permit-approval')->group(function () {
+        // (HSE/SPV) Mengambil daftar izin yang perlu di-approve
+        Route::get('/', [WorkPermitApprovalController::class, 'index']);
+
+        // (HSE/SPV) Menyetujui izin
+        // {id} adalah ID dari 'work_permit_approval'
+        Route::post('/{id}/approve', [WorkPermitApprovalController::class, 'approve']);
+
+        // (HSE/SPV) Menolak izin
+        // {id} adalah ID dari 'work_permit_approval'
+        Route::post('/{id}/reject', [WorkPermitApprovalController::class, 'reject']);
+    });
+
+    // ===========================================
+    // ALUR PENUTUPAN (COMPLETION) [BARU]
+    // ===========================================
+    Route::prefix('work-permit-completion')->group(function () {
+        // (PEMOHON) Memulai alur penutupan (Langkah 7)
+        // {id} adalah ID dari 'work_permit'
+        Route::post('/{id}/start', [WorkPermitCompletionController::class, 'startCompletion']);
+
+        // (PEMOHON/HSE/SPV) Mengambil daftar tugas penutupan
+        Route::get('/', [WorkPermitCompletionController::class, 'index']);
+
+        // (PEMOHON/HSE/SPV) Menandatangani penutupan (Langkah 8, 9, 10)
+        Route::post('/sign', [WorkPermitCompletionController::class, 'signCompletion']);
+    });
+
+    // ===========================================
+    // PENGISIAN CHECKLIST (PEMOHON/HSE)
+    // ===========================================
+
+    // --- Checklist GWP ---
+    Route::prefix('gwp-cek')->group(function () {
+        // Mengambil (GET) semua item checklist untuk 1 permit GWP
+        Route::get('/{permit_gwp_id}', [GwpCekController::class, 'index']);
+        // Mengupdate (PUT) 1 item checklist
+        Route::put('/{id}', [GwpCekController::class, 'update']);
+    });
+
+    // --- Checklist CSE ---
+    Route::prefix('cse-cek')->group(function () {
+        Route::get('/{permit_cse_id}', [CseCekController::class, 'index']);
+        Route::put('/{id}', [CseCekController::class, 'update']);
+    });
+
+    // --- Checklist HWP [BARU] ---
+    Route::prefix('hwp-cek')->group(function () {
+        Route::get('/{permit_hwp_id}', [HwpCekController::class, 'index']);
+        Route::put('/{id}', [HwpCekController::class, 'update']);
+    });
+
+    // --- Checklist EWP [BARU] ---
+    Route::prefix('ewp-cek')->group(function () {
+        Route::get('/{permit_ewp_id}', [EwpCekController::class, 'index']);
+        Route::put('/{id}', [EwpCekController::class, 'update']);
+    });
+
+    // --- Checklist LP [BARU] ---
+    Route::prefix('lp-cek')->group(function () {
+        Route::get('/{permit_lp_id}', [LpCekController::class, 'index']);
+        Route::put('/{id}', [LpCekController::class, 'update']);
+    });
+
 });

@@ -1,37 +1,46 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class CreateWorkPermitCompletionsTable extends Migration
 {
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
     public function up()
     {
-        // Tabel ini akan mencatat log 3-langkah penutupan
+        // Tabel ini akan menyimpan log 'tanda tangan' penutupan
+        // (1 baris untuk Pemohon, 1 baris untuk HSE, 1 baris untuk SPV)
         Schema::create('work_permit_completions', function (Blueprint $table) {
             $table->id();
 
-            // Relasi ke "Induk" Izin Kerja
+            // Relasi ke Izin Kerja Induk
             $table->foreignId('work_permit_id')->constrained('work_permits')->onDelete('cascade');
 
-            // Siapa yang harus menandatangani
-            $table->foreignId('user_id')->constrained('user');
-            $table->string('role_penutupan', 50); // hse, supervisor, pemohon
+            // Siapa yang tanda tangan
+            $table->foreignId('user_id')->constrained('user')->onDelete('cascade');
 
-                                       // Urutan tanda tangan
-            $table->integer('urutan'); // 1=HSE, 2=Supervisor, 3=Pemohon
+                                                  // Peran saat tanda tangan
+            $table->string('role_penutupan', 50); // 'pemohon', 'hse', 'supervisor'
 
-                                                             // Status tanda tangan
-            $table->integer('status_penutupan')->default(0); // 0=Pending, 1=Signed
-            $table->dateTime('tgl_penutupan')->nullable();
+            $table->timestamp('tgl_penutupan');
             $table->text('catatan')->nullable();
 
             $table->timestamps();
         });
     }
 
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
     public function down()
     {
         Schema::dropIfExists('work_permit_completions');
     }
-};
+}

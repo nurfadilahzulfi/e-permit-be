@@ -1,23 +1,21 @@
+// tailwind.config.js
+
+/** @type {import('tailwindcss').Config} */
 module.exports = {
-  purge: [
-    './resources/**/*.blade.php',
-    './resources/**/*.js',
-    './resources/**/*.vue',
+  // [TAMBAHKAN BARIS INI]
+  darkMode: 'class', 
+  
+  content: [
+    "./resources/**/*.blade.php",
+    "./resources/**/*.js",
   ],
-  darkMode: 'class', // enable dark mode toggle
   theme: {
     extend: {
-      fontFamily: {
-        poppins: ['Poppins', 'sans-serif'],
-      },
-      colors: {
-        primary: '#2563eb',
-        secondary: '#1e293b',
-      },
+        fontFamily: {
+            // Pastikan 'Inter' ada di sini jika kamu menggunakannya
+            inter: ['Inter', 'sans-serif'], 
+        },
     },
-  },
-  variants: {
-    extend: {},
   },
   plugins: [],
 }

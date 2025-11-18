@@ -84,10 +84,6 @@
                         {{-- Data Aksi --}}
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center gap-2" data-field="aksi-buttons">
-                                {{-- Tombol Detail (Checklist GWP) --}}
-                                <a href="#" data-action="detail-gwp" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors px-2 py-1.5 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50" title="Lihat Checklist GWP">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
-                                </a>
                                 {{-- Tombol Reject --}}
                                 <button data-action="reject" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors px-2 py-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/50" title="Tolak Izin">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -96,6 +92,9 @@
                                 <button data-action="approve" class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors px-2 py-1.5 rounded-md hover:bg-green-100 dark:hover:bg-green-900/50" title="Setujui Izin">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                 </button>
+                                {{-- Garis pemisah --}}
+                                <span class="border-l h-5 border-slate-300 dark:border-slate-600 mx-1"></span>
+                                {{-- Tombol Detail (Checklist) akan ditambahkan JS di sini --}}
                             </div>
                         </td>
                     </tr>
@@ -111,6 +110,9 @@
 <script>
     // URL API
     const API_URL = "{{ route('work-permit-approval.index') }}";
+    // [PERBAIKAN] URL Base untuk Aksi
+    const APPROVE_URL_BASE = "{{ url('work-permit-approval') }}";
+    const REJECT_URL_BASE = "{{ url('work-permit-approval') }}";
     
     // Elemen Global
     const toastContainer = document.getElementById('toast-container');
@@ -149,6 +151,19 @@
         } catch (e) { return dateString; }
     }
 
+    /**
+     * [BARU] Helper untuk membuat tombol checklist
+     */
+    function createChecklistButton(href, title, colorClass, svgIcon) {
+        const button = document.createElement('a');
+        button.href = href;
+        button.title = title;
+        button.className = `${colorClass} transition-colors px-2 py-1.5 rounded-md hover:bg-opacity-20`;
+        button.innerHTML = svgIcon;
+        button.target = "_blank"; // Buka di tab baru
+        return button;
+    }
+
     // ===========================================
     // FUNGSI UTAMA (CRUD & ACTIONS)
     // ===========================================
@@ -175,14 +190,16 @@
 
             // 3. Loop data dan masukkan ke tabel
             result.data.forEach(item => {
+                // 'item' adalah data dari 'work_permit_approval'
+                // 'permit' adalah data 'work_permit' (Induk)
                 const permit = item.work_permit; 
                 if (!permit) return; 
 
                 const row = taskRowTemplate.content.cloneNode(true);
                 const newRow = row.querySelector('tr');
                 
-                newRow.dataset.id = item.id; 
-                newRow.dataset.permitId = permit.id; 
+                newRow.dataset.id = item.id; // ID dari work_permit_approval
+                newRow.dataset.permitId = permit.id; // ID dari work_permit
 
                 // Isi data ke kolom
                 row.querySelector('[data-field="nomor_pekerjaan"]').textContent = permit.nomor_pekerjaan;
@@ -195,31 +212,69 @@
 
                 // Event Listeners untuk Tombol Aksi
                 const aksiContainer = row.querySelector('[data-field="aksi-buttons"]');
-                const gwpButton = aksiContainer.querySelector('[data-action="detail-gwp"]');
                 const approveButton = aksiContainer.querySelector('[data-action="approve"]');
                 const rejectButton = aksiContainer.querySelector('[data-action="reject"]');
 
-                // Arahkan tombol GWP (jika ada)
-                if (permit.permit_gwp) {
-                    gwpButton.href = `{{ url('gwp-cek/view') }}/${permit.permit_gwp.id}`;
-                } else {
-                    gwpButton.remove(); // Hapus tombol GWP jika bukan GWP
+                // ========================================================
+                // --- [PERBAIKAN] Logika Tombol Checklist ---
+                // ========================================================
+                
+                // Tambahkan tombol GWP
+                if (permit.permit_gwp && permit.permit_gwp.length > 0) {
+                    const gwp = permit.permit_gwp[0];
+                    aksiContainer.appendChild(createChecklistButton(
+                        `{{ url('gwp-cek/view') }}/${gwp.id}`, 
+                        'Lihat Checklist GWP',
+                        'text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/50',
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>`
+                    ));
                 }
                 
-                {{-- 
-                ===================================================
-                [INI PERBARUANNYA] Tambahkan tombol untuk CSE
-                ===================================================
-                --}}
-                if (permit.permit_cse) {
-                    const cseButton = document.createElement('a');
-                    cseButton.href = `{{ url('cse-cek/view') }}/${permit.permit_cse.id}`;
-                    cseButton.title = "Lihat Checklist CSE";
-                    cseButton.className = "text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors px-2 py-1.5 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50";
-                    cseButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2Z"></path><path d="m12 16-4-4 4-4"></path><path d="M16 12H8"></path></svg>`;
-                    // Sisipkan sebelum tombol reject
-                    aksiContainer.insertBefore(cseButton, rejectButton);
+                // Tambahkan tombol CSE
+                if (permit.permit_cse && permit.permit_cse.length > 0) {
+                    const cse = permit.permit_cse[0];
+                    aksiContainer.appendChild(createChecklistButton(
+                        `{{ url('cse-cek/view') }}/${cse.id}`, 
+                        'Lihat Checklist CSE',
+                        'text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/50',
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2Z"></path><path d="m12 16-4-4 4-4"></path><path d="M16 12H8"></path></svg>`
+                    ));
                 }
+
+                // Tambahkan tombol HWP
+                if (permit.permit_hwp && permit.permit_hwp.length > 0) {
+                    const hwp = permit.permit_hwp[0];
+                    aksiContainer.appendChild(createChecklistButton(
+                        `{{ url('hwp-cek/view') }}/${hwp.id}`, 
+                        'Lihat Checklist HWP',
+                        'text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50',
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M14.5 4.5c.3-.3.6-.6.8-1 .4-1 1-1.5 2.2-1.5 1.6 0 2.5 1.2 2.5 3 0 .4-.1.7-.3 1.1-.2.5-.4 1-.6 1.4-.3.6-.6 1.1-1 1.5-.4.4-.8.8-1.3 1.1l-.1.1c-2 1.6-4.4 2.1-7.2 1.4C5.1 11.2 3 8.3 3 5c0-1.1.4-2.1 1.2-2.8C5 1.4 6.2 1 7.5 1c1.5 0 2.7 1 3.4 2.1.3.4.5.8.7 1.2"></path><path d="M15.5 7.5c.3-.3.6-.6.8-1 .4-1 1-1.5 2.2-1.5 1.6 0 2.5 1.2 2.5 3 0 .4-.1.7-.3 1.1-.2.5-.4 1-.6 1.4-.3.6-.6 1.1-1 1.5-.4.4-.8.8-1.3 1.1l-.1.1c-2 1.6-4.4 2.1-7.2 1.4C7.1 13.2 5 10.3 5 7c0-1.1.4-2.1 1.2-2.8C7 3.4 8.2 3 9.5 3c1.5 0 2.7 1 3.4 2.1.3.4.5.8.7 1.2"></path></svg>`
+                    ));
+                }
+
+                // Tambahkan tombol EWP
+                if (permit.permit_ewp && permit.permit_ewp.length > 0) {
+                    const ewp = permit.permit_ewp[0];
+                    aksiContainer.appendChild(createChecklistButton(
+                        `{{ url('ewp-cek/view') }}/${ewp.id}`, 
+                        'Lihat Checklist EWP',
+                        'text-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/50',
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="m3 11 9-9 9 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path><path d="M9 21v-6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6"></path></svg>`
+                    ));
+                }
+
+                // Tambahkan tombol LP
+                if (permit.permit_lp && permit.permit_lp.length > 0) {
+                    const lp = permit.permit_lp[0];
+                    aksiContainer.appendChild(createChecklistButton(
+                        `{{ url('lp-cek/view') }}/${lp.id}`, 
+                        'Lihat Checklist LP',
+                        'text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700/50',
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M18 9c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3Z"></path><path d="M12 6V5a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h2"></path><path d="M12 12L4 20"></path><path d="m15 9-1-1"></path><path d="M12 12v9"></path><path d="M12 21h4"></path></svg>`
+                    ));
+                }
+
+                // --- Akhir Perbaikan Tombol ---
 
                 approveButton.addEventListener('click', () => handleApprove(item.id));
                 rejectButton.addEventListener('click', () => handleReject(item.id));
@@ -242,8 +297,11 @@
             return;
         }
 
+        // [PERBAIKAN] URL sekarang dinamis dan ID ada di URL
+        const url = `${APPROVE_URL_BASE}/${approvalId}/approve`;
+        
         try {
-            const response = await fetch(`{{ route('work-permit-approval.approve') }}`, {
+            const response = await fetch(url, { // <-- URL diperbaiki
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -251,7 +309,7 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 body: JSON.stringify({
-                    approval_id: approvalId,
+                    // 'approval_id' tidak perlu lagi di body
                     catatan: 'Disetujui'
                 })
             });
@@ -282,8 +340,11 @@
             return;
         }
 
+        // [PERBAIKAN] URL sekarang dinamis dan ID ada di URL
+        const url = `${REJECT_URL_BASE}/${approvalId}/reject`;
+
         try {
-            const response = await fetch(`{{ route('work-permit-approval.reject') }}`, {
+            const response = await fetch(url, { // <-- URL diperbaiki
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -291,7 +352,7 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 body: JSON.stringify({
-                    approval_id: approvalId,
+                    // 'approval_id' tidak perlu lagi di body
                     catatan: catatan
                 })
             });
